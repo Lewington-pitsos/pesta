@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:english_words/english_words.dart';
 
 void main() {
   runApp(const CorralOrigin());
@@ -16,43 +15,36 @@ class CorralOrigin extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Corral'),
         ),
-        body: const Center(child: RandomWords()),
+        body: Center(child: TaskSelector()),
       ),
     );
   }
 }
 
-class RandomWords extends StatefulWidget {
-  const RandomWords({super.key});
+class TaskSelector extends StatefulWidget {
+  const TaskSelector({super.key});
 
   @override
-  State<RandomWords> createState() => _RandomWordsState();
+  State<TaskSelector> createState() => TaskSelectorState();
 }
 
-class _RandomWordsState extends State<RandomWords> {
-  final _suggestions = <WordPair>[];
-  final _biggerFont = const TextStyle(fontSize: 18);
+class TaskSelectorState extends State<TaskSelector> {
+  static List<String> tasks = ['Catch-Up', 'Group Session'];
+  String selectedTask;
+
+  TaskSelectorState() : selectedTask = tasks[0];
 
   @override
-  Widget build(BuildContext context) {
-    final wordPair = WordPair.random();
-    return ListView.builder(
-      padding: const EdgeInsets.all(26.0),
-      itemBuilder: /*1*/ (context, i) {
-        if (i.isOdd) return const Divider(); /*2*/
-
-        final index = i ~/ 2; /*3*/
-        if (index >= _suggestions.length) {
-          _suggestions.addAll(generateWordPairs().take(10)); /*4*/
-        }
-        return ListTile(
-            title: Center(
-          child: Text(
-            _suggestions[index].asPascalCase,
-            style: _biggerFont,
-          ),
-        ));
-      },
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+          body: Center(
+        child: DropdownButton<String>(
+          items: tasks
+              .map((item) =>
+                  DropdownMenuItem<String>(value: item, child: Text(item)))
+              .toList(),
+          value: selectedTask,
+          onChanged: (value) =>
+              setState(() => selectedTask = value ?? tasks[0]),
+        ),
+      ));
 }
