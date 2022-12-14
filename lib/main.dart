@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(CorralOrigin());
@@ -22,8 +23,44 @@ class CorralOrigin extends StatelessWidget {
   }
 }
 
-class TaskForm extends StatelessWidget {
-  TaskForm({super.key});
+class TaskForm extends StatefulWidget {
+  const TaskForm({super.key});
+
+  @override
+  State<TaskForm> createState() => _TaskFormState();
+}
+
+class _TaskFormState extends State<TaskForm> {
+  late PermissionStatus _contactsPermission;
+
+  @override
+  void initState() {
+    super.initState();
+    // _contactsPermission = await _getPermission();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(builder: (context, snapshot) {
+      return FormContent();
+    });
+  }
+
+  // Future<PermissionStatus> _getPermission() async {
+  //   final PermissionStatus permission = await Permission.contacts.status;
+  //   if (permission != PermissionStatus.granted &&
+  //       permission != PermissionStatus.denied) {
+  //     final Map<Permission, PermissionStatus> permissionStatus =
+  //         await [Permission.contacts].request();
+  //     return permissionStatus[Permission.contacts] ?? PermissionStatus.denied;
+  //   } else {
+  //     return permission;
+  //   }
+  // }
+}
+
+class FormContent extends StatelessWidget {
+  FormContent({super.key});
   final _formKey = GlobalKey<FormBuilderState>();
   static List<String> tasks = [
     'Catch-Up',
@@ -76,32 +113,4 @@ class TaskForm extends StatelessWidget {
       ),
     ));
   }
-}
-
-class TaskSelector extends StatefulWidget {
-  const TaskSelector({super.key});
-
-  @override
-  State<TaskSelector> createState() => TaskSelectorState();
-}
-
-class TaskSelectorState extends State<TaskSelector> {
-  static List<String> tasks = ['Catch-Up', 'Group Session'];
-  String selectedTask;
-
-  TaskSelectorState() : selectedTask = tasks[0];
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-          body: Center(
-        child: DropdownButton<String>(
-          items: tasks
-              .map((item) =>
-                  DropdownMenuItem<String>(value: item, child: Text(item)))
-              .toList(),
-          value: selectedTask,
-          onChanged: (value) =>
-              setState(() => selectedTask = value ?? tasks[0]),
-        ),
-      ));
 }
