@@ -25,7 +25,12 @@ class CorralOrigin extends StatelessWidget {
 class TaskForm extends StatelessWidget {
   TaskForm({super.key});
   final _formKey = GlobalKey<FormBuilderState>();
-  static List<String> tasks = ['Catch-Up', 'Group Session'];
+  static List<String> tasks = [
+    'Catch-Up',
+    'Group Session (coming soon)',
+    'Ask To Borrow (coming soon)'
+  ];
+  static List<String> enabledTasks = [tasks[0]];
 
   @override
   Widget build(BuildContext context) {
@@ -35,24 +40,38 @@ class TaskForm extends StatelessWidget {
       onChanged: () => print("we like to boogy"),
       autovalidateMode: AutovalidateMode.onUserInteraction,
       initialValue: {
-        "textField": "why the heck not?",
         "taskDropdown": tasks[0],
       },
       child: Column(
         children: [
           FormBuilderDropdown(
-              name: 'taskDropdown',
-              items: tasks
-                  .map((item) =>
-                      DropdownMenuItem<String>(value: item, child: Text(item)))
-                  .toList()),
-          FormBuilderTextField(name: "textField"),
+            name: 'taskDropdown',
+            items: tasks
+                .map((item) => DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(item),
+                    enabled: enabledTasks.contains(item)))
+                .toList(),
+            decoration: const InputDecoration(labelText: 'Task'),
+          ),
+          FormBuilderDateTimePicker(
+            name: 'startTime',
+            decoration: const InputDecoration(labelText: 'Start Time'),
+          ),
+          FormBuilderDateTimePicker(
+            name: 'endTime',
+            decoration: const InputDecoration(labelText: 'End Time'),
+          ),
           ElevatedButton(
               onPressed: () {
-                _formKey.currentState?.reset();
-                FocusScope.of(context).unfocus();
+                _formKey.currentState?.save();
+                final task = _formKey.currentState?.value;
+
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('$task', textScaleFactor: 2.2),
+                    duration: Duration(seconds: 1)));
               },
-              child: const Text("Reset"))
+              child: const Text("Submit"))
         ],
       ),
     ));
