@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
 
 void main() {
-  runApp(const CorralOrigin());
+  runApp(CorralOrigin());
 }
 
 class CorralOrigin extends StatelessWidget {
-  const CorralOrigin({super.key});
+  CorralOrigin({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,9 +16,46 @@ class CorralOrigin extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Corral'),
         ),
-        body: Center(child: TaskSelector()),
+        body: TaskForm(),
       ),
     );
+  }
+}
+
+class TaskForm extends StatelessWidget {
+  TaskForm({super.key});
+  final _formKey = GlobalKey<FormBuilderState>();
+  static List<String> tasks = ['Catch-Up', 'Group Session'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+        child: FormBuilder(
+      key: _formKey,
+      onChanged: () => print("we like to boogy"),
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      initialValue: {
+        "textField": "why the heck not?",
+        "taskDropdown": tasks[0],
+      },
+      child: Column(
+        children: [
+          FormBuilderDropdown(
+              name: 'taskDropdown',
+              items: tasks
+                  .map((item) =>
+                      DropdownMenuItem<String>(value: item, child: Text(item)))
+                  .toList()),
+          FormBuilderTextField(name: "textField"),
+          ElevatedButton(
+              onPressed: () {
+                _formKey.currentState?.reset();
+                FocusScope.of(context).unfocus();
+              },
+              child: const Text("Reset"))
+        ],
+      ),
+    ));
   }
 }
 
