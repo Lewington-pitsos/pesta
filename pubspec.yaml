@@ -41,6 +41,7 @@ dependencies:
   permission_handler: ^10.2.0
   fluttercontactpicker: ^4.7.0
   sqflite: ^2.2.2
+  workmanager: ^0.5.1
 
 dev_dependencies:
   flutter_test:
