@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:openai_gpt3_api/openai_gpt3_api.dart';
 
 class Dog {
   final int id;
@@ -127,6 +128,8 @@ void main() async {
   });
 
   print("here are the third dogs $dogs3");
+
+  var api = GPT3(<YOUR_API_KEY>);
 
   runApp(PestaOrigin());
 }
