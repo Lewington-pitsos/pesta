@@ -1,5 +1,5 @@
-name: corral
-description: A new Flutter project.
+name: pesta
+description: Next Gen pestering.
 
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -40,6 +40,8 @@ dependencies:
   contacts_service: ^0.6.3
   permission_handler: ^10.2.0
   fluttercontactpicker: ^4.7.0
+  sqflite: ^2.2.2
+  workmanager: ^0.5.1
 
 dev_dependencies:
   flutter_test:
