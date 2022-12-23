@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:workmanager/workmanager.dart';
 
 class Dog {
   final int id;
@@ -36,8 +37,24 @@ class Dog {
   }
 }
 
+void executeTask() {
+  Workmanager().executeTask((taskName, inputData) async {
+    print("this is the task $taskName");
+    print("this is the inputData $inputData");
+
+    for (var i = 0; i < 30; i++) {
+      await Future.delayed(Duration(seconds: 1));
+      print("performing $taskName");
+    }
+
+    return Future.value(true);
+  });
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Workmanager().initialize(executeTask, isInDebugMode: true);
+
   final database = await openDatabase(
     join(await getDatabasesPath(), 'pesta_database.db'),
     onCreate: (db, version) {
@@ -233,13 +250,16 @@ class FormContent extends StatelessWidget {
           ),
           ContactList(),
           ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 _formKey.currentState?.save();
                 final task = _formKey.currentState?.value;
 
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text('$task', textScaleFactor: 2.2),
                     duration: Duration(seconds: 1)));
+
+                await Workmanager().registerOneOffTask(
+                    DateTime.now().second.toString(), "happy song");
               },
               child: const Text("Submit"))
         ],
