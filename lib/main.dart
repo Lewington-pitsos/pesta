@@ -1,14 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:openai_gpt3_api/completion.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
 import 'dart:async';
+import 'dart:async' show Future;
+import 'dart:convert' show json;
+import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:openai_gpt3_api/openai_gpt3_api.dart';
+
+class Secret {
+  final String SecretKey;
+  Secret({this.SecretKey = ""});
+  factory Secret.fromJson(Map<String, dynamic> jsonMap) {
+    return new Secret(SecretKey: jsonMap["SecretKey"]);
+  }
+
+  @override
+  String toString() {
+    return 'Secret{id: $SecretKey}';
+  }
+}
+
+class SecretLoader {
+  final String secretPath;
+
+  SecretLoader({required this.secretPath});
+  Future<Secret> load() {
+    return rootBundle.loadStructuredData<Secret>(this.secretPath,
+        (jsonStr) async {
+      final secret = Secret.fromJson(json.decode(jsonStr));
+      return secret;
+    });
+  }
+}
 
 class Dog {
   final int id;
@@ -127,6 +158,23 @@ void main() async {
   });
 
   print("here are the third dogs $dogs3");
+
+  Secret secret = await SecretLoader(secretPath: "secrets.json").load();
+
+  print("its a secret $secret");
+
+  var api = GPT3(secret.SecretKey);
+
+  print("api $api");
+
+  CompletionApiResult result = await api.completion(
+      "mirror, mirror on the wall, who is the fairest of them all?",
+      maxTokens: 250);
+
+  Choice choice = await result.choices[0];
+
+  print(choice.text);
+  print("result $result");
 
   runApp(PestaOrigin());
 }
