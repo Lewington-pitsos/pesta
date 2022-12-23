@@ -15,6 +15,7 @@ class Task {
   int maxPolls;
   int neediness;
   bool alternateSuggestion;
+  String status;
 
   Task(
       this.contacts,
@@ -27,5 +28,6 @@ class Task {
       this.deadline,
       this.maxPolls,
       this.neediness,
-      this.alternateSuggestion);
+      this.alternateSuggestion,
+      this.status);
 }
