@@ -1,16 +1,6 @@
 # Pesta
 
-A new Flutter project.
+An app which uses GPT3 and SMS to organize events with your contacts. We're currently in the process of building the app.
 
-## Getting Started
+![WIP](assets/whiteboard-1.jpg)
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
