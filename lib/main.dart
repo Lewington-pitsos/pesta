@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:openai_gpt3_api/completion.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
@@ -162,7 +163,18 @@ void main() async {
 
   print("its a secret $secret");
 
-  var api = GPT3(<);
+  var api = GPT3(secret.SecretKey);
+
+  print("api $api");
+
+  CompletionApiResult result = await api.completion(
+      "mirror, mirror on the wall, who is the fairest of them all?",
+      maxTokens: 250);
+
+  Choice choice = await result.choices[0];
+
+  print(choice.text);
+  print("result $result");
 
   runApp(PestaOrigin());
 }
