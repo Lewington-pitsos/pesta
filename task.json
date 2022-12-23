@@ -3,5 +3,5 @@
 "location":null, "customMessages":null, "responseTime":null, 
 "deadline":null, 
 "maxPolls":null, "maxGroupSize":null, "needyLevel":null, 
-"alternateSuggestion":null}
+"alternateSuggestion":null, "status": null}
 		
