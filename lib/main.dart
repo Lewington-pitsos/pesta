@@ -5,19 +5,19 @@ import 'package:contacts_service/contacts_service.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
 
 void main() {
-  runApp(CorralOrigin());
+  runApp(PestaOrigin());
 }
 
-class CorralOrigin extends StatelessWidget {
-  CorralOrigin({super.key});
+class PestaOrigin extends StatelessWidget {
+  PestaOrigin({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Corral',
+      title: 'Pesta',
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Corral'),
+          title: const Text('Pesta'),
         ),
         body: TaskForm(),
       ),
