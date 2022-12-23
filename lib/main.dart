@@ -3,144 +3,21 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
-import 'dart:async';
 
-import 'package:flutter/widgets.dart';
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:workmanager/workmanager.dart';
-
-class Dog {
-  final int id;
-  final String name;
-  final int age;
-
-  const Dog({
-    required this.id,
-    required this.name,
-    required this.age,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'age': age,
-    };
-  }
-
-  // Implement toString to make it easier to see information about
-  // each dog when using the print statement.
-  @override
-  String toString() {
-    return 'Dog{id: $id, name: $name, age: $age}';
-  }
+void main() {
+  runApp(CorralOrigin());
 }
 
-void executeTask() {
-  Workmanager().executeTask((taskName, inputData) async {
-    print("this is the task $taskName");
-    print("this is the inputData $inputData");
-
-    for (var i = 0; i < 30; i++) {
-      await Future.delayed(Duration(seconds: 1));
-      print("performing $taskName");
-    }
-
-    return Future.value(true);
-  });
-}
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Workmanager().initialize(executeTask, isInDebugMode: true);
-
-  final database = await openDatabase(
-    join(await getDatabasesPath(), 'pesta_database.db'),
-    onCreate: (db, version) {
-      print('about to create the databbase table');
-      return db.execute(
-        'CREATE TABLE dogs(id INTEGER PRIMARY KEY, name TEXT, age INTEGER)',
-      );
-    },
-    version: 1,
-  );
-
-  print("we just connected to the database");
-
-  final tables =
-      await database.rawQuery('SELECT * FROM sqlite_master ORDER BY name;');
-
-  print("here are the tables $tables");
-
-  final List<Map<String, dynamic>> dogMaps = await database.query('dogs');
-  final dogs = List.generate(dogMaps.length, (i) {
-    return Dog(
-      id: dogMaps[i]['id'],
-      name: dogMaps[i]['name'],
-      age: dogMaps[i]['age'],
-    );
-  });
-
-  print("here are the dogs $dogs");
-
-  var fido = const Dog(
-    id: 0,
-    name: 'Lido',
-    age: 35,
-  );
-
-  await database.insert(
-    'dogs',
-    fido.toMap(),
-    conflictAlgorithm: ConflictAlgorithm.replace,
-  );
-
-  print('inserted fido');
-
-  final List<Map<String, dynamic>> dogMaps2 = await database.query('dogs');
-  final dogs2 = List.generate(dogMaps2.length, (i) {
-    return Dog(
-      id: dogMaps2[i]['id'],
-      name: dogMaps2[i]['name'],
-      age: dogMaps2[i]['age'],
-    );
-  });
-
-  print("here are the second dogs $dogs2");
-
-  await database.delete(
-    'dogs',
-    // Use a `where` clause to delete a specific dog.
-    where: 'id = ?',
-    // Pass the Dog's id as a whereArg to prevent SQL injection.
-    whereArgs: [0],
-  );
-
-  final List<Map<String, dynamic>> dogMaps3 = await database.query('dogs');
-  final dogs3 = List.generate(dogMaps3.length, (i) {
-    return Dog(
-      id: dogMaps3[i]['id'],
-      name: dogMaps3[i]['name'],
-      age: dogMaps3[i]['age'],
-    );
-  });
-
-  print("here are the third dogs $dogs3");
-
-  runApp(PestaOrigin());
-}
-
-class PestaOrigin extends StatelessWidget {
-  PestaOrigin({super.key});
+class CorralOrigin extends StatelessWidget {
+  CorralOrigin({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Pesta',
+      title: 'Corral',
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Pesta'),
+          title: const Text('Corral'),
         ),
         body: TaskForm(),
       ),
@@ -250,16 +127,13 @@ class FormContent extends StatelessWidget {
           ),
           ContactList(),
           ElevatedButton(
-              onPressed: () async {
+              onPressed: () {
                 _formKey.currentState?.save();
                 final task = _formKey.currentState?.value;
 
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text('$task', textScaleFactor: 2.2),
                     duration: Duration(seconds: 1)));
-
-                await Workmanager().registerOneOffTask(
-                    DateTime.now().second.toString(), "happy song");
               },
               child: const Text("Submit"))
         ],

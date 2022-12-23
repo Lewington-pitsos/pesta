@@ -1,8 +1,5 @@
 import UIKit
 import Flutter
-import workmanager
-
-WorkmanagerPlugin.registerTask(withIdentifier: "pesta-background")
 
 @UIApplicationMain
 @objc class AppDelegate: FlutterAppDelegate {

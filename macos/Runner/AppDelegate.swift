@@ -1,8 +1,5 @@
 import Cocoa
 import FlutterMacOS
-import workmanager
-
-WorkmanagerPlugin.registerTask(withIdentifier: "pesta-workmanager")
 
 @NSApplicationMain
 class AppDelegate: FlutterAppDelegate {
