@@ -1,3 +1,4 @@
+import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:openai_gpt3_api/completion.dart';
@@ -6,105 +7,66 @@ import 'package:contacts_service/contacts_service.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
 import 'dart:async';
 import 'package:flutter/widgets.dart';
+import 'package:background_sms/background_sms.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path/path.dart';
+import 'package:pesta/notification.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:openai_gpt3_api/openai_gpt3_api.dart';
 import 'package:pesta/utils.dart';
+import 'package:pesta/task.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Workmanager().initialize(executeTask, isInDebugMode: true);
+  await Workmanager().initialize(holdConversations, isInDebugMode: true);
 
   final database = await openDatabase(
-    join(await getDatabasesPath(), 'pesta_database.db'),
-    onCreate: (db, version) {
-      print('about to create the databbase table');
-      return db.execute(
-        'CREATE TABLE dogs(id INTEGER PRIMARY KEY, name TEXT, age INTEGER)',
-      );
-    },
-    version: 1,
+    join(await getDatabasesPath(), databaseName),
+    version: 2,
   );
 
-  print("we just connected to the database");
+  var tables = await database
+      .rawQuery('SELECT * FROM sqlite_master WHERE name="tasks";');
 
-  final tables =
-      await database.rawQuery('SELECT * FROM sqlite_master ORDER BY name;');
+  if (tables.isEmpty) {
+    await database.execute("""
+CREATE TABLE tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    taskType varchar(255) NOT NULL default '',
+    activity varchar(255) NOT NULL default '',
+    location varchar(255) NOT NULL default '',
+    deadline int NOT NULL,
+    neediness int NOT NULL,
+    status varchar(255) NOT NULL
+);
+""");
 
-  print("here are the tables $tables");
+    await database.execute("""
+CREATE TABLE contacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  taskId int NOT NULL,
+  fullName varchar(255) NOT NULL default '',
+  phoneNumber varchar(255) NOT NULL default '',
+  phoneNumberName varchar(255) NOT NULL default '',
+  CONSTRAINT fk_task,
+  FOREIGN KEY (taskId) REFERENCES tasks (id)
+);""");
 
-  final List<Map<String, dynamic>> dogMaps = await database.query('dogs');
-  final dogs = List.generate(dogMaps.length, (i) {
-    return Dog(
-      id: dogMaps[i]['id'],
-      name: dogMaps[i]['name'],
-      age: dogMaps[i]['age'],
-    );
-  });
-
-  print("here are the dogs $dogs");
-
-  var fido = const Dog(
-    id: 0,
-    name: 'Lido',
-    age: 35,
-  );
-
-  await database.insert(
-    'dogs',
-    fido.toMap(),
-    conflictAlgorithm: ConflictAlgorithm.replace,
-  );
-
-  print('inserted fido');
-
-  final List<Map<String, dynamic>> dogMaps2 = await database.query('dogs');
-  final dogs2 = List.generate(dogMaps2.length, (i) {
-    return Dog(
-      id: dogMaps2[i]['id'],
-      name: dogMaps2[i]['name'],
-      age: dogMaps2[i]['age'],
-    );
-  });
-
-  print("here are the second dogs $dogs2");
-
-  await database.delete(
-    'dogs',
-    // Use a `where` clause to delete a specific dog.
-    where: 'id = ?',
-    // Pass the Dog's id as a whereArg to prevent SQL injection.
-    whereArgs: [0],
-  );
-
-  final List<Map<String, dynamic>> dogMaps3 = await database.query('dogs');
-  final dogs3 = List.generate(dogMaps3.length, (i) {
-    return Dog(
-      id: dogMaps3[i]['id'],
-      name: dogMaps3[i]['name'],
-      age: dogMaps3[i]['age'],
-    );
-  });
-
-  print("here are the third dogs $dogs3");
-
-  Secret secret = await SecretLoader(secretPath: "secrets.json").load();
-
-  print("its a secret $secret");
-
-  var api = GPT3(secret.SecretKey);
-
-  print("api $api");
-
-  CompletionApiResult result = await api.completion(
-      "mirror, mirror on the wall, who is the fairest of them all?",
-      maxTokens: 250);
-
-  Choice choice = await result.choices[0];
-
-  print(choice.text);
-  print("result $result");
+    await database.execute("""
+CREATE TABLE times (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    taskId int NOT NULL,
+    start int NOT NULL,
+    end int NOT NULL,
+    CONSTRAINT fk_task,
+    FOREIGN KEY (taskId) REFERENCES tasks (id)
+);
+""");
+    print("database created");
+  } else {
+    print("database already exists");
+  }
 
   runApp(PestaOrigin());
 }
@@ -133,20 +95,42 @@ class TaskForm extends StatefulWidget {
   State<TaskForm> createState() => _TaskFormState();
 }
 
-Future<PermissionStatus> _getPermission() async {
-  final PermissionStatus permission = await Permission.contacts.status;
-  if (permission != PermissionStatus.granted &&
-      permission != PermissionStatus.denied) {
-    final Map<Permission, PermissionStatus> permissionStatus =
-        await [Permission.contacts].request();
-    return permissionStatus[Permission.contacts] ?? PermissionStatus.denied;
+Future<PermissionStatus> _getContactsPermission() async {
+  final PermissionStatus contactsPermission = await Permission.contacts.status;
+  if (contactsPermission != PermissionStatus.granted &&
+      contactsPermission != PermissionStatus.denied) {
+    final PermissionStatus permissionStatus =
+        await Permission.contacts.request();
+    return permissionStatus ?? PermissionStatus.denied;
   } else {
-    return permission;
+    return contactsPermission;
   }
 }
 
+Future<PermissionStatus> _getSMSPermission() async {
+  final PermissionStatus SMSPermission = await Permission.sms.status;
+  if (SMSPermission != PermissionStatus.granted &&
+      SMSPermission != PermissionStatus.denied) {
+    final PermissionStatus permissionStatus = await Permission.sms.request();
+    return permissionStatus ?? PermissionStatus.denied;
+  } else {
+    return SMSPermission;
+  }
+}
+
+Future<PermissionStatus> _getAllPermissions() async {
+  final PermissionStatus contactsPermission = await _getContactsPermission();
+  final PermissionStatus SMSPermission = await _getSMSPermission();
+  if (contactsPermission == PermissionStatus.granted &&
+      SMSPermission == PermissionStatus.granted) {
+    return PermissionStatus.granted;
+  }
+  ;
+  return PermissionStatus.denied;
+}
+
 class _TaskFormState extends State<TaskForm> {
-  Future<PermissionStatus> _contactsPermission = _getPermission();
+  PermissionStatus permissions = PermissionStatus.denied;
 
   @override
   void initState() {
@@ -155,38 +139,36 @@ class _TaskFormState extends State<TaskForm> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<PermissionStatus>(
-        future: _contactsPermission,
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            if (snapshot.data == PermissionStatus.granted) {
-              return FormContent();
-            } else {
-              // TODO: handle the user's response to this in some manner
-              Permission.contacts.request();
+    return Builder(builder: (context) {
+      if (permissions == PermissionStatus.granted) {
+        return PestaForm();
+      } else {
+        Permission.sms.request().whenComplete(
+            () => Permission.contacts.request().whenComplete(() async {
+                  permissions = await _getAllPermissions();
+                  setState(() {
+                    permissions = permissions;
+                  });
+                }));
 
-              return Center(
-                  child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                    Text("Please grant permission to access contacts"),
-                  ]));
-            }
-          } else {
-            return Center(
-                child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                  Text("Loading..."),
-                  CircularProgressIndicator()
-                ]));
-          }
-        });
+        return Center(
+            child:
+                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text("Please grant permission to access contacts and sms"),
+        ]));
+      }
+    });
   }
 }
 
-class FormContent extends StatelessWidget {
-  FormContent({super.key});
+class PestaForm extends StatefulWidget {
+  const PestaForm({super.key});
+
+  @override
+  State<PestaForm> createState() => _PestaFormState();
+}
+
+class _PestaFormState extends State<PestaForm> {
   final _formKey = GlobalKey<FormBuilderState>();
   static List<String> tasks = [
     'Catch-Up',
@@ -194,22 +176,30 @@ class FormContent extends StatelessWidget {
     'Ask To Borrow (coming soon)'
   ];
   static List<String> enabledTasks = [tasks[0]];
+  var gpt3Loaded = false;
+  List<PhoneContact> contacts = [];
+  Database? db;
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Center(
         child: FormBuilder(
       key: _formKey,
-      onChanged: () => print("we like to boogy"),
+      onChanged: () => print("form has changed"),
       autovalidateMode: AutovalidateMode.onUserInteraction,
       initialValue: {
-        "taskDropdown": tasks[0],
+        "task": tasks[0],
       },
       // child:
       child: Column(
         children: [
           FormBuilderDropdown(
-            name: 'taskDropdown',
+            name: 'task',
             items: tasks
                 .map((item) => DropdownMenuItem<String>(
                     value: item,
@@ -218,78 +208,92 @@ class FormContent extends StatelessWidget {
                 .toList(),
             decoration: const InputDecoration(labelText: 'Task'),
           ),
+          FormBuilderTextField(
+            name: "activity",
+            decoration: const InputDecoration(labelText: "activity"),
+            initialValue: "dinner",
+          ),
           FormBuilderDateTimePicker(
             name: 'startTime',
             decoration: const InputDecoration(labelText: 'Start Time'),
+            initialValue: DateTime.now().add(Duration(hours: 3)),
           ),
           FormBuilderDateTimePicker(
             name: 'endTime',
             decoration: const InputDecoration(labelText: 'End Time'),
+            initialValue: DateTime.now().add(Duration(hours: 6)),
           ),
-          ContactList(),
-          ElevatedButton(
+          Column(children: [
+            Text("Contacts: "),
+            SizedBox(
+              height: 140,
+              child: ListView.builder(
+                scrollDirection: Axis.vertical,
+                itemCount: contacts.length,
+                itemBuilder: (context, index) {
+                  final contact = contacts[index];
+
+                  return ListTile(
+                      title: Text(contact.fullName ?? "unknown contact"));
+                },
+              ),
+            ),
+            ElevatedButton(
               onPressed: () async {
-                _formKey.currentState?.save();
-                final task = _formKey.currentState?.value;
+                final PhoneContact contact =
+                    await FlutterContactPicker.pickPhoneContact();
 
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('$task', textScaleFactor: 2.2),
-                    duration: Duration(seconds: 1)));
+                contacts.add(contact);
 
-                await Workmanager().registerOneOffTask(
-                    DateTime.now().second.toString(), "happy song");
+                setState(() {
+                  contacts = contacts;
+                });
               },
+              child: new Text('Add a contact'),
+            ),
+          ]),
+          ElevatedButton(
+              onPressed: contacts.length > 0
+                  ? () async {
+                      _formKey.currentState?.save();
+                      final formData = _formKey.currentState?.value;
+
+                      final taskType = formData?["task"];
+
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Starting $taskType task',
+                              textScaleFactor: 1.5),
+                          duration: Duration(seconds: 3)));
+
+                      final timeOptions = DateTimeRange(
+                          start: formData!['startTime'],
+                          end: formData!['endTime']);
+
+                      final task = Task(
+                          contacts: contacts,
+                          taskType: taskType,
+                          activity: formData!['activity'],
+                          times: [timeOptions]);
+
+                      db ??= await openDatabase(
+                        join(await getDatabasesPath(), databaseName),
+                        version: 2,
+                      );
+
+                      final taskId = await saveTask(task, db!);
+
+                      print('just saved task $taskId');
+
+                      await Workmanager().registerOneOffTask(
+                        DateTime.now().second.toString(),
+                        task.taskType,
+                        inputData: {'taskId': taskId},
+                      );
+                    }
+                  : null,
               child: const Text("Submit"))
         ],
       ),
     ));
-  }
-}
-
-class ContactList extends StatefulWidget {
-  const ContactList({super.key});
-
-  @override
-  State<ContactList> createState() => _ContactListState();
-}
-
-class _ContactListState extends State<ContactList> {
-  List<PhoneContact> contacts = [];
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(children: [
-      Text("Contacts: "),
-      SizedBox(
-        height: 140,
-        child: ListView.builder(
-          scrollDirection: Axis.vertical,
-          itemCount: contacts.length,
-          itemBuilder: (context, index) {
-            final contact = contacts[index];
-
-            return ListTile(title: Text(contact.fullName ?? "unknown contact"));
-          },
-        ),
-      ),
-      ElevatedButton(
-        onPressed: () async {
-          final PhoneContact contact =
-              await FlutterContactPicker.pickPhoneContact();
-
-          contacts.add(contact);
-
-          setState(() {
-            contacts = contacts;
-          });
-        },
-        child: new Text('Add a contact'),
-      ),
-    ]);
   }
 }
