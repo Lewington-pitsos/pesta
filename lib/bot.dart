@@ -9,6 +9,8 @@ import 'package:pesta/task.dart';
 import 'package:background_sms/background_sms.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:pesta/task.dart';
+import 'package:pesta/conversation.dart';
+import 'package:pesta/text.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -159,72 +161,6 @@ void holdConversations() {
   });
 }
 
-enum TaskStatus {
-  ongoing,
-  success,
-  failure,
-  moot,
-}
-
-class Conversation {
-  TaskStatus status = TaskStatus.ongoing;
-  bool newResponse = false;
-  String selfName;
-  String otherName;
-  String activity;
-  String location;
-  DateTimeRange time;
-  DateTime startTime = DateTime.now();
-  String number;
-  List<SmsMessage> messages = [];
-
-  Conversation(this.selfName, this.otherName, this.number, this.activity,
-      this.location, this.time);
-
-  bool contains(SmsMessage msg) {
-    return messages.any((m) => m.id == msg.id);
-  }
-
-  addMessage(SmsMessage message) {
-    messages.add(message);
-  }
-
-  String get lastMessage {
-    final recievedMessages =
-        messages.where((m) => m.kind == SmsMessageKind.received);
-
-    if (recievedMessages.isEmpty) {
-      return "";
-    }
-
-    return recievedMessages.last.body ?? "";
-  }
-
-  addSentMessage(String message) {
-    messages.add(SmsMessage.fromJson({
-      "address": number,
-      "body": message,
-      "read": 1,
-      "kind": SmsMessageKind.sent,
-      "date": DateTime.now().millisecondsSinceEpoch,
-      "date_sent": DateTime.now().millisecondsSinceEpoch,
-    }));
-  }
-
-  String get text {
-    var txt = "";
-
-    for (var message in messages) {
-      final name =
-          message.kind == SmsMessageKind.received ? otherName : selfName;
-
-      txt += "$name: ${message.body}\n";
-    }
-
-    return txt;
-  }
-}
-
 enum ResponseType { affirmative, negative, unclear, manualRequest }
 
 Future<ResponseType> getResponseType(Conversation c) async {
@@ -284,41 +220,4 @@ Future<bool> sendText(String text, String number) async {
       }
     }
   }
-}
-
-String failurePrompt(Conversation c) {
-  return """Ok... ${c.selfName} might be very sad but I understand...""";
-}
-
-String clarificationPrompt(Conversation c) {
-  return """I couldn't understand your last message. I'm just a simple bot, I need one of these (single letter) responses:
-  A - Yes, let's do it!
-  B - No, I'm busy
-  C - Go away! I want to talk to ${c.selfName}
-  """;
-}
-
-String humanReadable(DateTimeRange time) {
-  var suffix = "th";
-  if (time.start.day == 1) {
-    suffix = "st";
-  } else if (time.start.day == 2) {
-    suffix = "nd";
-  } else if (time.start.day == 3) {
-    suffix = "rd";
-  }
-
-  return "between ${time.start.hour} and ${time.end.hour} on the the ${time.start.day}$suffix";
-}
-
-String manualRequestResponse(Conversation c) {
-  return "That's ok, I don't have feelings to hurt. I'll let ${c.selfName} know";
-}
-
-String kickoff(Conversation c, DateTime time) {
-  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity} at ${c.location} ${humanReadable(c.time)}. I can only understand these single letter responses:
-  A - Yes!
-  B - No, I'm busy or something
-  C - Go away! I want to talk to ${c.selfName}
-  """;
 }

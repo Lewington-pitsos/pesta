@@ -12,7 +12,7 @@ import 'package:path/path.dart';
 import 'package:pesta/notification.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:pesta/utils.dart';
+import 'package:pesta/bot.dart';
 import 'package:pesta/task.dart';
 
 void main() async {

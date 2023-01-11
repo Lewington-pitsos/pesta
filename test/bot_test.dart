@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:pesta/utils.dart';
+import 'package:pesta/bot.dart';
+import 'package:pesta/conversation.dart';
 
 void main() {
   group("Conversation", () {
