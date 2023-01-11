@@ -1,7 +1,6 @@
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:openai_gpt3_api/completion.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
@@ -13,8 +12,7 @@ import 'package:path/path.dart';
 import 'package:pesta/notification.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:openai_gpt3_api/openai_gpt3_api.dart';
-import 'package:pesta/utils.dart';
+import 'package:pesta/bot.dart';
 import 'package:pesta/task.dart';
 
 void main() async {
@@ -176,7 +174,6 @@ class _PestaFormState extends State<PestaForm> {
     'Ask To Borrow (coming soon)'
   ];
   static List<String> enabledTasks = [tasks[0]];
-  var gpt3Loaded = false;
   List<PhoneContact> contacts = [];
   Database? db;
 
