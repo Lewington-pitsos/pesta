@@ -3,9 +3,57 @@ import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pesta/bot.dart';
+import 'package:pesta/task.dart';
 import 'package:pesta/conversation.dart';
+import 'package:fluttercontactpicker/fluttercontactpicker.dart';
 
 void main() {
+  group("Conversation Loop", () {
+    test("sends kickoffs", () async {
+      final jacob =
+          PhoneContact("Jacob", PhoneNumber("04 1234 1678", "mobile"));
+      final wendy =
+          PhoneContact("wendy", PhoneNumber("99 9999 9999", "mobile"));
+
+      final task = Task(
+          contacts: [jacob, wendy],
+          taskType: "invitation",
+          activity: "dinner",
+          times: [
+            DateTimeRange(
+                start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
+                end: DateTime.fromMillisecondsSinceEpoch(1671933376654))
+          ]);
+      final c1 = Conversation(
+          'Paul', jacob.fullName!, jacob.phoneNumber!.number!, "dinner", "", [
+        DateTimeRange(
+            start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
+            end: DateTime.fromMillisecondsSinceEpoch(1671925276654))
+      ]);
+
+      final c2 = Conversation(
+          'Paul', wendy.fullName!, wendy.phoneNumber!.number!, "dinner", "", [
+        DateTimeRange(
+            start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
+            end: DateTime.fromMillisecondsSinceEpoch(1671925276654))
+      ]);
+      final conversations = [c1, c2];
+
+      final textFn = (String message, String number) async {
+        return true;
+      };
+      final notiFn = (String title, String body) async {
+        return true;
+      };
+      final smsQueryFn = (
+          {String? address,
+          List<SmsQueryKind> kinds = const [SmsQueryKind.inbox]}) async {
+        return <SmsMessage>[];
+      };
+
+      await conversationLoop(task, conversations, textFn, notiFn, smsQueryFn);
+    });
+  });
   group("Conversation", () {
     test('create sms', () {
       final c = Conversation('Paul', 'Jacob', "+61342834665", "dinner", "", [
