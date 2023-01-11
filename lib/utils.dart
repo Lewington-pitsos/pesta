@@ -5,8 +5,6 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:openai_gpt3_api/openai_gpt3_api.dart';
-import 'package:openai_gpt3_api/completion.dart';
 import 'package:pesta/task.dart';
 import 'package:background_sms/background_sms.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
@@ -30,27 +28,6 @@ class Secret {
   String toString() {
     return 'Secret{id: $SecretKey}';
   }
-}
-
-class SecretLoader {
-  final String secretPath;
-
-  SecretLoader({required this.secretPath});
-  Future<Secret> load() {
-    return rootBundle.loadStructuredData<Secret>(this.secretPath,
-        (jsonStr) async {
-      final secret = Secret.fromJson(json.decode(jsonStr));
-      return secret;
-    });
-  }
-}
-
-Future<String> generateSMS(GPT3 gpt3, String prompt,
-    {num temperature = 0.0}) async {
-  return (await gpt3.completion(prompt,
-          maxTokens: 80, temperature: temperature, engine: Engine.davinci3))
-      .choices[0]
-      .text;
 }
 
 void holdConversations() {
@@ -82,10 +59,6 @@ void holdConversations() {
       return false;
     }
 
-    final gpt3 = await makeGPT3();
-
-    print("gpt3 loaded");
-
     final List<Conversation> conversations = task.contacts
         .map((c) => Conversation(
             defaultName,
@@ -98,7 +71,7 @@ void holdConversations() {
 
     print("these are the conversations: $conversations");
     for (var c in conversations) {
-      await sendGPT3Text(gpt3, kickoffPrompt(c, DateTime.now()), c.number);
+      await sendText(kickoffPrompt(c, DateTime.now()), c.number);
     }
 
     List<Conversation> activeConversations = conversations;
@@ -112,7 +85,7 @@ void holdConversations() {
       await updateConversations(activeConversations);
       for (var c in activeConversations.where((c) => c.newMessage)) {
         c.newMessage = false;
-        final responseType = await getResponseType(c, gpt3);
+        final responseType = await getResponseType(c);
 
         print("got response type $responseType");
 
@@ -131,12 +104,11 @@ void holdConversations() {
         } else if (responseType == ResponseType.negative) {
           c.status = TaskStatus.failure;
 
-          await sendGPT3Text(gpt3, failurePrompt(c), c.number);
+          await sendText(failurePrompt(c), c.number);
         } else if (responseType == ResponseType.unclear) {
           // we need further clarification
-          final message =
-              await sendGPT3Text(gpt3, clarificationPrompt(c), c.number);
-          c.addSentMessage(message);
+          final message = clarificationPrompt(c);
+          await sendText(message, c.number);
         }
       }
 
@@ -223,21 +195,12 @@ Future notifyUserOfSuccess(Conversation c) async {
   return Future.delayed(const Duration(milliseconds: 200));
 }
 
-Future<String> sendGPT3Text(GPT3 gpt3, String prompt, String number) async {
-  final message = await generateSMS(gpt3, prompt);
-  await sendText(message, number);
-  return message;
-}
-
-Future<ResponseType> getResponseType(Conversation c, GPT3 gpt3) async {
+Future<ResponseType> getResponseType(Conversation c) async {
   print("this is the conversation: ${c.text}");
-  final responseText = await generateSMS(gpt3, statusCheckPrompt(c));
 
-  print("response from gpt3 when working out response type $responseText");
-
-  if (responseText.contains('(a)')) {
+  if (c.text.contains('(a)')) {
     return ResponseType.affirmative;
-  } else if (responseText.contains('(b)')) {
+  } else if (c.text.contains('(b)')) {
     return ResponseType.unclear;
   } else {
     return ResponseType.negative;
@@ -348,10 +311,4 @@ String kickoffPrompt(Conversation c, DateTime time) {
   return """${c.selfName} wants to meet their ${c.otherName} for ${c.activity} starting at some time between ${c.time.start} and ${c.time.end}, today is $time. ${c.selfName} does not know if their friend is free. ${c.selfName} is about to send an SMS. You're now ${c.selfName}. $tonePrompt
 
 ${c.selfName}:""";
-}
-
-Future<GPT3> makeGPT3() async {
-  Secret secret = await SecretLoader(secretPath: "secrets.json").load();
-
-  return GPT3(secret.SecretKey);
 }
