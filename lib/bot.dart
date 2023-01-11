@@ -19,19 +19,6 @@ import 'notification.dart';
 const databaseName = "taskdb6.db";
 const defaultName = "Louka";
 
-class Secret {
-  final String SecretKey;
-  Secret({this.SecretKey = ""});
-  factory Secret.fromJson(Map<String, dynamic> jsonMap) {
-    return new Secret(SecretKey: jsonMap["SecretKey"]);
-  }
-
-  @override
-  String toString() {
-    return 'Secret{id: $SecretKey}';
-  }
-}
-
 void holdConversations() {
   Workmanager().executeTask((taskName, inputData) async {
     final notificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -73,7 +60,7 @@ void holdConversations() {
 
     print("these are the conversations: $conversations");
     for (var c in conversations) {
-      await sendText(kickoff(c, DateTime.now()), c.number);
+      await sendText(kickoffSMS(c, DateTime.now()), c.number);
     }
 
     List<Conversation> activeConversations = conversations;
@@ -97,6 +84,8 @@ void holdConversations() {
               print("affirmative response");
               c.status = TaskStatus.success;
 
+              await sendText(successSMS(c), c.number);
+
               await Noti.showBigTextNotification(
                   title: "Success",
                   body:
@@ -109,13 +98,13 @@ void holdConversations() {
             {
               c.status = TaskStatus.failure;
 
-              await sendText(failurePrompt(c), c.number);
+              await sendText(failureSMS(c), c.number);
               break;
             }
 
           case ResponseType.unclear:
             {
-              final message = clarificationPrompt(c);
+              final message = clarificationSMS(c);
               await sendText(message, c.number);
               c.addSentMessage(message);
               break;
@@ -125,7 +114,7 @@ void holdConversations() {
             {
               c.status = TaskStatus.failure;
 
-              await sendText(manualRequestResponse(c), c.number);
+              await sendText(manualRequestSMS(c), c.number);
               await Noti.showBigTextNotification(
                   title: "help...",
                   body:
