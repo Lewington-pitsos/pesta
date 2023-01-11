@@ -16,7 +16,7 @@ import 'package:path/path.dart';
 
 import 'notification.dart';
 
-const databaseName = "taskdb6.db";
+const databaseName = "taskdb7.db";
 const defaultName = "Louka";
 
 sendResponses(
@@ -143,7 +143,7 @@ void holdConversations() {
 
     final taskId = inputData!["taskId"];
     final database = await openDatabase(
-      join(await getDatabasesPath(), 'taskdb6.db'),
+      join(await getDatabasesPath(), databaseName),
       version: 2,
     );
 
