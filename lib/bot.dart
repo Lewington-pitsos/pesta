@@ -19,6 +19,79 @@ import 'notification.dart';
 const databaseName = "taskdb6.db";
 const defaultName = "Louka";
 
+sendResponses(Task task, List<Conversation> activeConversations,
+    FlutterLocalNotificationsPlugin notificationsPlugin) async {
+  for (var c in activeConversations.where((c) => c.newResponse)) {
+    c.newResponse = false;
+    final responseType = await getResponseType(c);
+
+    print("got response type $responseType");
+
+    switch (responseType) {
+      case ResponseType.affirmative:
+        {
+          print("affirmative response");
+          c.status = TaskStatus.success;
+
+          await sendText(successSMS(c), c.number);
+          break;
+        }
+
+      case ResponseType.negative:
+        {
+          c.status = TaskStatus.failure;
+
+          await sendText(failureSMS(c), c.number);
+          break;
+        }
+
+      case ResponseType.unclear:
+        {
+          final message = clarificationSMS(c);
+          await sendText(message, c.number);
+          c.addSentMessage(message);
+          break;
+        }
+
+      case ResponseType.manualRequest:
+        {
+          c.status = TaskStatus.failure;
+
+          await sendText(manualRequestSMS(c), c.number);
+          await Noti.showBigTextNotification(
+              title: "help...",
+              body:
+                  "${c.otherName} wants to speak to you about to ${task.activity}, see your SMS history with ${c.otherName} for details.",
+              fln: notificationsPlugin);
+
+          break;
+        }
+
+      default:
+        {
+          throw Exception(
+              "unknown response type $responseType for conversation $c");
+        }
+    }
+  }
+}
+
+Future<bool> checkStatus(Task task, List<Conversation> conversations,
+    FlutterLocalNotificationsPlugin notificationsPlugin) async {
+  for (var c in conversations) {
+    if (c.status == TaskStatus.success) {
+      await Noti.showBigTextNotification(
+          title: "Success",
+          body:
+              "${c.otherName} agreed to ${task.activity}, see your SMS history with ${c.otherName} for details.",
+          fln: notificationsPlugin);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void holdConversations() {
   Workmanager().executeTask((taskName, inputData) async {
     final notificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -64,72 +137,18 @@ void holdConversations() {
     }
 
     List<Conversation> activeConversations = conversations;
-    var success = false;
-
     print("kickoff messages sent");
 
     while (activeConversations.isNotEmpty &&
         DateTime.now().isBefore(task.deadline)) {
       print("checking ${activeConversations.length} conversations}");
       await updateConversations(activeConversations);
-      for (var c in activeConversations.where((c) => c.newResponse)) {
-        c.newResponse = false;
-        final responseType = await getResponseType(c);
+      await sendResponses(task, activeConversations, notificationsPlugin);
+      final success =
+          await checkStatus(task, conversations, notificationsPlugin);
 
-        print("got response type $responseType");
-
-        switch (responseType) {
-          case ResponseType.affirmative:
-            {
-              print("affirmative response");
-              c.status = TaskStatus.success;
-
-              await sendText(successSMS(c), c.number);
-
-              await Noti.showBigTextNotification(
-                  title: "Success",
-                  body:
-                      "${c.otherName} agreed to ${task.activity}, see your SMS history with ${c.otherName} for details.",
-                  fln: notificationsPlugin);
-              return true;
-            }
-
-          case ResponseType.negative:
-            {
-              c.status = TaskStatus.failure;
-
-              await sendText(failureSMS(c), c.number);
-              break;
-            }
-
-          case ResponseType.unclear:
-            {
-              final message = clarificationSMS(c);
-              await sendText(message, c.number);
-              c.addSentMessage(message);
-              break;
-            }
-
-          case ResponseType.manualRequest:
-            {
-              c.status = TaskStatus.failure;
-
-              await sendText(manualRequestSMS(c), c.number);
-              await Noti.showBigTextNotification(
-                  title: "help...",
-                  body:
-                      "${c.otherName} wants to speak to you about to ${task.activity}, see your SMS history with ${c.otherName} for details.",
-                  fln: notificationsPlugin);
-
-              break;
-            }
-
-          default:
-            {
-              throw Exception(
-                  "unknown response type $responseType for conversation $c");
-            }
-        }
+      if (success) {
+        return true;
       }
 
       activeConversations = activeConversations
@@ -141,7 +160,7 @@ void holdConversations() {
     }
 
     await Noti.showBigTextNotification(
-        title: "No Takers",
+        title: "No takers",
         body:
             "Unable to schedule task $taskName, we asked everyone, but nobody said yes",
         fln: notificationsPlugin);
