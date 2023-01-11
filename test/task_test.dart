@@ -12,7 +12,7 @@ void main() {
             test("Formats numbers correctly", () {
               final c =
                   PhoneContact("Paul", PhoneNumber("04 1234 5555", "mobile"));
-              expect(c.phoneNumber?.number, "04 1234 5678");
+              expect(c.phoneNumber?.number, "04 1234 5555");
               expect(formatNumber(c.phoneNumber!.number!), "+61412345555");
             }),
             test("Formats numbers on instantiation", () {
