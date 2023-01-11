@@ -19,8 +19,11 @@ import 'notification.dart';
 const databaseName = "taskdb6.db";
 const defaultName = "Louka";
 
-sendResponses(Task task, List<Conversation> conversations,
-    FlutterLocalNotificationsPlugin notificationsPlugin) async {
+sendResponses(
+    Task task,
+    List<Conversation> conversations,
+    Future<bool> Function(String, String) textFn,
+    Future<dynamic> Function(String, String) notiFn) async {
   for (var c
       in conversations.where((c) => c.nextResponse != ResponseType.none)) {
     c.setResponded();
@@ -30,32 +33,29 @@ sendResponses(Task task, List<Conversation> conversations,
       case ResponseType.affirmative:
         {
           print("affirmative response");
-          await sendText(successSMS(c), c.number);
+          await textFn(successSMS(c), c.number);
           break;
         }
 
       case ResponseType.negative:
         {
-          await sendText(failureSMS(c), c.number);
+          await textFn(failureSMS(c), c.number);
           break;
         }
 
       case ResponseType.unclear:
         {
           final message = clarificationSMS(c);
-          await sendText(message, c.number);
+          await textFn(message, c.number);
           c.addSentMessage(message);
           break;
         }
 
       case ResponseType.manualRequest:
         {
-          await sendText(manualRequestSMS(c), c.number);
-          await Noti.showBigTextNotification(
-              title: "help...",
-              body:
-                  "${c.otherName} wants to speak to you about to ${task.activity}, see your SMS history with ${c.otherName} for details.",
-              fln: notificationsPlugin);
+          await textFn(manualRequestSMS(c), c.number);
+          await notiFn("help...",
+              "${c.otherName} wants to speak to you about to ${task.activity}, see your SMS history with ${c.otherName} for details.");
 
           break;
         }
@@ -70,17 +70,54 @@ sendResponses(Task task, List<Conversation> conversations,
 }
 
 Future<bool> checkStatus(Task task, List<Conversation> conversations,
-    FlutterLocalNotificationsPlugin notificationsPlugin) async {
+    Future<dynamic> Function(String, String) notiFn) async {
   for (var c in conversations) {
     if (c.isAvailable) {
-      await Noti.showBigTextNotification(
-          title: "Success",
-          body:
-              "${c.otherName} agreed to ${task.activity}, see your SMS history with ${c.otherName} for details.",
-          fln: notificationsPlugin);
+      await notiFn("Success",
+          "${c.otherName} agreed to ${task.activity}, see your SMS history with ${c.otherName} for details.");
       return true;
     }
   }
+
+  return false;
+}
+
+Future<bool> conversationLoop(
+    Task task,
+    List<Conversation> conversations,
+    Future<bool> Function(String, String) textFn,
+    Future<dynamic> Function(String, String) notiFn,
+    Future<List<SmsMessage>> Function(
+            {String? address, List<SmsQueryKind> kinds})
+        smsQueryFn) async {
+  for (var c in conversations) {
+    await textFn(kickoffSMS(c, DateTime.now()), c.number);
+  }
+
+  List<Conversation> activeConversations = conversations;
+  print("kickoff messages sent");
+
+  while (activeConversations.isNotEmpty &&
+      DateTime.now().isBefore(task.deadline)) {
+    print("checking ${activeConversations.length} conversations}");
+    await updateConversations(activeConversations, smsQueryFn);
+    await sendResponses(task, activeConversations, textFn, notiFn);
+    final success = await checkStatus(task, conversations, notiFn);
+
+    if (success) {
+      return true;
+    }
+
+    activeConversations = activeConversations
+        .where((c) => c.availability != Availability.finalized)
+        .toList();
+
+    print("awaiting ${activeConversations.length} responses}");
+    await Future.delayed(const Duration(seconds: 60 * 5));
+  }
+
+  await notiFn("No takers",
+      "Can't schedule task ${task.activity}, we asked everyone, but nobody said yes");
 
   return false;
 }
@@ -119,41 +156,18 @@ void holdConversations() {
             c.phoneNumber!.number!, task.activity, task.location, task.times))
         .toList();
 
+    const textFn = sendText;
+    notiFn(String title, String body) => Noti.showBigTextNotification(
+        title: title, body: body, fln: notificationsPlugin);
+    SmsQuery query = SmsQuery();
+    smsQueryFn(
+            {String? address,
+            List<SmsQueryKind> kinds = const [SmsQueryKind.inbox]}) =>
+        query.querySms(address: address, kinds: kinds);
     print("these are the conversations: $conversations");
-    for (var c in conversations) {
-      await sendText(kickoffSMS(c, DateTime.now()), c.number);
-    }
 
-    List<Conversation> activeConversations = conversations;
-    print("kickoff messages sent");
-
-    while (activeConversations.isNotEmpty &&
-        DateTime.now().isBefore(task.deadline)) {
-      print("checking ${activeConversations.length} conversations}");
-      await updateConversations(activeConversations);
-      await sendResponses(task, activeConversations, notificationsPlugin);
-      final success =
-          await checkStatus(task, conversations, notificationsPlugin);
-
-      if (success) {
-        return true;
-      }
-
-      activeConversations = activeConversations
-          .where((c) => c.availability != Availability.finalized)
-          .toList();
-
-      print("awaiting ${activeConversations.length} responses}");
-      await Future.delayed(const Duration(seconds: 60 * 5));
-    }
-
-    await Noti.showBigTextNotification(
-        title: "No takers",
-        body:
-            "Unable to schedule task $taskName, we asked everyone, but nobody said yes",
-        fln: notificationsPlugin);
-
-    return false;
+    return await conversationLoop(
+        task, conversations, textFn, notiFn, smsQueryFn);
   });
 }
 
@@ -173,12 +187,14 @@ Future<ResponseType> getResponseType(Conversation c) async {
   }
 }
 
-Future updateConversations(List<Conversation> conversations) async {
-  SmsQuery query = SmsQuery();
-
+Future updateConversations(
+    List<Conversation> conversations,
+    Future<List<SmsMessage>> Function(
+            {String? address, List<SmsQueryKind> kinds})
+        smsQueryFn) async {
   for (var c in conversations) {
     final List<SmsMessage> messages =
-        await query.querySms(address: c.number, kinds: [SmsQueryKind.inbox]);
+        await smsQueryFn(address: c.number, kinds: [SmsQueryKind.inbox]);
 
     for (var msg in messages) {
       if (msg.dateSent != null &&
