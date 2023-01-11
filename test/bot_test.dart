@@ -7,51 +7,98 @@ import 'package:pesta/task.dart';
 import 'package:pesta/conversation.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
 
+Future<bool> textFn(String message, String number) async {
+  return Future<bool>(() => true);
+}
+
+Future<bool> notiFn(String title, String body) async {
+  return Future<bool>(() => true);
+}
+
+Future<List<SmsMessage>> Function({String? address, List<SmsQueryKind> kinds})
+    makeSmsQueryFn(
+        {Map<String, List<List<SmsMessage>>> messageBatches = const {}}) {
+  final counts = Map<String, int>();
+
+  messageBatches.forEach((key, value) => {counts[key] = 0});
+
+  return (
+      {String? address,
+      List<SmsQueryKind> kinds = const [SmsQueryKind.inbox]}) async {
+    if (address == null) {
+      return Future<List<SmsMessage>>(() => <SmsMessage>[]);
+    }
+    final idx = counts[address];
+    if (idx != null) {
+      counts[address] = idx + 1;
+    }
+
+    if (idx != null && idx >= 0 && idx < messageBatches[address]!.length) {
+      return Future<List<SmsMessage>>(() => messageBatches[address]![idx]);
+    }
+
+    return Future<List<SmsMessage>>(() => <SmsMessage>[]);
+  };
+}
+
 void main() {
+  late Task task;
+  late List<Conversation> conversations;
+
+  setUp(() {
+    final jacob =
+        PhoneContact("Jacob Sacher", PhoneNumber("04 1234 1678", "mobile"));
+    final wendy =
+        PhoneContact("wendy Woo", PhoneNumber("99 9999 9999", "mobile"));
+
+    task = Task(
+        contacts: [jacob, wendy],
+        taskType: "invitation",
+        activity: "dinner",
+        times: [
+          DateTimeRange(
+              start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
+              end: DateTime.fromMillisecondsSinceEpoch(1671933376654))
+        ],
+        deadline: DateTime.now().add(Duration(milliseconds: 200)));
+    conversations = task.contacts
+        .map((c) => Conversation(defaultName, c.fullName!.split(" ")[0],
+            c.phoneNumber!.number!, task.activity, task.location, task.times))
+        .toList();
+  });
+
   group("Conversation Loop", () {
-    test("sends kickoffs", () async {
-      final jacob =
-          PhoneContact("Jacob", PhoneNumber("04 1234 1678", "mobile"));
-      final wendy =
-          PhoneContact("wendy", PhoneNumber("99 9999 9999", "mobile"));
+    test("fails for no replies", () async {
+      final outcome = await conversationLoop(
+          task, conversations, textFn, notiFn, makeSmsQueryFn(),
+          interval: null);
+      expect(outcome, false);
+    });
 
-      final task = Task(
-          contacts: [jacob, wendy],
-          taskType: "invitation",
-          activity: "dinner",
-          times: [
-            DateTimeRange(
-                start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
-                end: DateTime.fromMillisecondsSinceEpoch(1671933376654))
-          ]);
-      final c1 = Conversation(
-          'Paul', jacob.fullName!, jacob.phoneNumber!.number!, "dinner", "", [
-        DateTimeRange(
-            start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
-            end: DateTime.fromMillisecondsSinceEpoch(1671925276654))
-      ]);
-
-      final c2 = Conversation(
-          'Paul', wendy.fullName!, wendy.phoneNumber!.number!, "dinner", "", [
-        DateTimeRange(
-            start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
-            end: DateTime.fromMillisecondsSinceEpoch(1671925276654))
-      ]);
-      final conversations = [c1, c2];
-
-      final textFn = (String message, String number) async {
-        return true;
-      };
-      final notiFn = (String title, String body) async {
-        return true;
-      };
-      final smsQueryFn = (
-          {String? address,
-          List<SmsQueryKind> kinds = const [SmsQueryKind.inbox]}) async {
-        return <SmsMessage>[];
-      };
-
-      await conversationLoop(task, conversations, textFn, notiFn, smsQueryFn);
+    test("succeeds for a single positive reply", () async {
+      final outcome = await conversationLoop(
+          task,
+          conversations,
+          textFn,
+          notiFn,
+          makeSmsQueryFn(messageBatches: {
+            "+61412341678": [
+              [],
+              [],
+              [
+                SmsMessage.fromJson({
+                  "address": "+61412341678",
+                  "body": "A",
+                  "read": 1,
+                  "kind": SmsMessageKind.sent,
+                  "date": DateTime.now().millisecondsSinceEpoch,
+                  "date_sent": DateTime.now().millisecondsSinceEpoch,
+                })
+              ]
+            ]
+          }),
+          interval: null);
+      expect(outcome, true);
     });
   });
   group("Conversation", () {

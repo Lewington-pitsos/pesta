@@ -47,6 +47,7 @@ dependencies:
   flutter_sms_inbox: ^1.0.2
 
   flutter_local_notifications: ^13.0.0
+  mockito: ^5.3.2
 
 dev_dependencies:
   flutter_test:
@@ -59,6 +60,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
   test: ^1.21.4
+  build_runner: ^2.3.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

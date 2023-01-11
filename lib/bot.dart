@@ -26,8 +26,8 @@ sendResponses(
     Future<dynamic> Function(String, String) notiFn) async {
   for (var c
       in conversations.where((c) => c.nextResponse != ResponseType.none)) {
-    c.setResponded();
     final responseType = c.nextResponse;
+    c.setResponded();
 
     switch (responseType) {
       case ResponseType.affirmative:
@@ -60,6 +60,12 @@ sendResponses(
           break;
         }
 
+      case ResponseType.none:
+        {
+          throw Exception(
+              "response type $responseType should not be possible: $c");
+        }
+
       default:
         {
           throw Exception(
@@ -89,7 +95,8 @@ Future<bool> conversationLoop(
     Future<dynamic> Function(String, String) notiFn,
     Future<List<SmsMessage>> Function(
             {String? address, List<SmsQueryKind> kinds})
-        smsQueryFn) async {
+        smsQueryFn,
+    {Duration? interval = const Duration(seconds: 60 * 5)}) async {
   for (var c in conversations) {
     await textFn(kickoffSMS(c, DateTime.now()), c.number);
   }
@@ -113,7 +120,9 @@ Future<bool> conversationLoop(
         .toList();
 
     print("awaiting ${activeConversations.length} responses}");
-    await Future.delayed(const Duration(seconds: 60 * 5));
+    if (interval != null) {
+      await Future.delayed(interval);
+    }
   }
 
   await notiFn("No takers",
@@ -193,6 +202,7 @@ Future updateConversations(
             {String? address, List<SmsQueryKind> kinds})
         smsQueryFn) async {
   for (var c in conversations) {
+    print("address ${c.number}");
     final List<SmsMessage> messages =
         await smsQueryFn(address: c.number, kinds: [SmsQueryKind.inbox]);
 
