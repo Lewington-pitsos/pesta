@@ -34,7 +34,7 @@ void holdConversations() {
   Workmanager().executeTask((taskName, inputData) async {
     final notificationsPlugin = FlutterLocalNotificationsPlugin();
 
-    print("about to notify");
+    print("about to notify user");
     await Noti.initialize(notificationsPlugin);
 
     print("beginning task: $taskName");
@@ -71,7 +71,7 @@ void holdConversations() {
 
     print("these are the conversations: $conversations");
     for (var c in conversations) {
-      await sendText(kickoffPrompt(c, DateTime.now()), c.number);
+      await sendText(kickoff(c, DateTime.now()), c.number);
     }
 
     List<Conversation> activeConversations = conversations;
@@ -83,32 +83,61 @@ void holdConversations() {
         DateTime.now().isBefore(task.deadline)) {
       print("checking ${activeConversations.length} conversations}");
       await updateConversations(activeConversations);
-      for (var c in activeConversations.where((c) => c.newMessage)) {
-        c.newMessage = false;
+      for (var c in activeConversations.where((c) => c.newResponse)) {
+        c.newResponse = false;
         final responseType = await getResponseType(c);
 
         print("got response type $responseType");
 
-        if (responseType == ResponseType.affirmative) {
-          print("affirmative response");
-          c.status = TaskStatus.success;
+        switch (responseType) {
+          case ResponseType.affirmative:
+            {
+              print("affirmative response");
+              c.status = TaskStatus.success;
 
-          await notifyUserOfSuccess(c);
+              await Noti.showBigTextNotification(
+                  title: "Success",
+                  body:
+                      "${c.otherName} agreed to ${task.activity}, see your SMS history with ${c.otherName} for details.",
+                  fln: notificationsPlugin);
+              return true;
+            }
 
-          await Noti.showBigTextNotification(
-              title: "Success",
-              body:
-                  "${c.otherName} agreed to ${task.activity}, see your SMS history with ${c.otherName} for more details.",
-              fln: notificationsPlugin);
-          return true;
-        } else if (responseType == ResponseType.negative) {
-          c.status = TaskStatus.failure;
+          case ResponseType.negative:
+            {
+              c.status = TaskStatus.failure;
 
-          await sendText(failurePrompt(c), c.number);
-        } else if (responseType == ResponseType.unclear) {
-          // we need further clarification
-          final message = clarificationPrompt(c);
-          await sendText(message, c.number);
+              await sendText(failurePrompt(c), c.number);
+              break;
+            }
+
+          case ResponseType.unclear:
+            {
+              final message = clarificationPrompt(c);
+              await sendText(message, c.number);
+              c.addSentMessage(message);
+              break;
+            }
+
+          case ResponseType.manualRequest:
+            {
+              c.status = TaskStatus.failure;
+
+              await sendText(manualRequestResponse(c), c.number);
+              await Noti.showBigTextNotification(
+                  title: "help...",
+                  body:
+                      "${c.otherName} wants to speak to you about to ${task.activity}, see your SMS history with ${c.otherName} for details.",
+                  fln: notificationsPlugin);
+
+              break;
+            }
+
+          default:
+            {
+              throw Exception(
+                  "unknown response type $responseType for conversation $c");
+            }
         }
       }
 
@@ -123,7 +152,7 @@ void holdConversations() {
     await Noti.showBigTextNotification(
         title: "No Takers",
         body:
-            "Unable to schedule task $taskName, we asked everyone, but nobody was free",
+            "Unable to schedule task $taskName, we asked everyone, but nobody said yes",
         fln: notificationsPlugin);
 
     return false;
@@ -139,7 +168,7 @@ enum TaskStatus {
 
 class Conversation {
   TaskStatus status = TaskStatus.ongoing;
-  bool newMessage = false;
+  bool newResponse = false;
   String selfName;
   String otherName;
   String activity;
@@ -158,6 +187,17 @@ class Conversation {
 
   addMessage(SmsMessage message) {
     messages.add(message);
+  }
+
+  String get lastMessage {
+    final recievedMessages =
+        messages.where((m) => m.kind == SmsMessageKind.received);
+
+    if (recievedMessages.isEmpty) {
+      return "";
+    }
+
+    return recievedMessages.last.body ?? "";
   }
 
   addSentMessage(String message) {
@@ -185,25 +225,21 @@ class Conversation {
   }
 }
 
-enum ResponseType {
-  affirmative,
-  negative,
-  unclear,
-}
-
-Future notifyUserOfSuccess(Conversation c) async {
-  return Future.delayed(const Duration(milliseconds: 200));
-}
+enum ResponseType { affirmative, negative, unclear, manualRequest }
 
 Future<ResponseType> getResponseType(Conversation c) async {
   print("this is the conversation: ${c.text}");
 
-  if (c.text.contains('(a)')) {
+  final lastMessage = c.lastMessage.toLowerCase().trim();
+
+  if (lastMessage == 'a') {
     return ResponseType.affirmative;
-  } else if (c.text.contains('(b)')) {
-    return ResponseType.unclear;
-  } else {
+  } else if (lastMessage == 'b') {
     return ResponseType.negative;
+  } else if (lastMessage == 'c') {
+    return ResponseType.manualRequest;
+  } else {
+    return ResponseType.unclear;
   }
 }
 
@@ -221,7 +257,7 @@ Future updateConversations(List<Conversation> conversations) async {
           !c.contains(msg)) {
         print("adding message: ${msg.body}, ${msg.id}, ${msg.kind}");
         c.addMessage(msg);
-        c.newMessage = true;
+        c.newResponse = true;
       }
     }
   }
@@ -250,48 +286,16 @@ Future<bool> sendText(String text, String number) async {
   }
 }
 
-const tonePrompt = "Use colloquial language. Don't use unnecessary words.";
-
-String statusCheckPrompt(Conversation c) {
-  return """Below is an informal sms conversation. Which of the following options describes ${c.otherName}'s attitude, give the most weight to ${c.otherName}'s later responses.
-
-(a) ${c.otherName} is available for ${c.activity} at the specified time
-(b) It is unclear whether ${c.otherName} is free for at the specified time
-(c) ${c.otherName} is not available for ${c.activity} at the specified time
-
-START CONVERSATION -----
-
-${c.text}
-
-END CONVERSATION -----""";
-}
-
 String failurePrompt(Conversation c) {
-  return """${c.selfName} was trying to organize to see ${c.otherName} for ${c.activity}. Below is their conversation so far.
-  
-START CONVERSATION -----
-
-${c.text}
-
-END CONVERSATION -----
-
-${c.selfName} understands that ${c.otherName} is not available this is fine. You are now ${c.selfName}. $tonePrompt.
-  
-${c.selfName}: """;
+  return """Ok... ${c.selfName} might be very sad but I understand...""";
 }
 
 String clarificationPrompt(Conversation c) {
-  return """Below is an informal sms conversation.
-  
-START CONVERSATION -----
-
-${c.text}
-
-END CONVERSATION -----
-
-${c.selfName} mainly just wants to know if ${c.otherName} wants to come to ${c.activity} at some time between ${c.time.start} and ${c.time.end}. You are now ${c.selfName}. Use colloquial language.
-
-${c.selfName}:""";
+  return """I couldn't understand your last message. I'm just a simple bot, I need one of these (single letter) responses:
+  A - Yes, let's do it!
+  B - No, I'm busy
+  C - Go away! I want to talk to ${c.selfName}
+  """;
 }
 
 String humanReadable(DateTimeRange time) {
@@ -307,8 +311,14 @@ String humanReadable(DateTimeRange time) {
   return "between ${time.start.hour} and ${time.end.hour} on the the ${time.start.day}$suffix";
 }
 
-String kickoffPrompt(Conversation c, DateTime time) {
-  return """${c.selfName} wants to meet their ${c.otherName} for ${c.activity} starting at some time between ${c.time.start} and ${c.time.end}, today is $time. ${c.selfName} does not know if their friend is free. ${c.selfName} is about to send an SMS. You're now ${c.selfName}. $tonePrompt
+String manualRequestResponse(Conversation c) {
+  return "That's ok, I don't have feelings to hurt. I'll let ${c.selfName} know";
+}
 
-${c.selfName}:""";
+String kickoff(Conversation c, DateTime time) {
+  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity} at ${c.location} ${humanReadable(c.time)}. I can only understand these single letter responses:
+  A - Yes!
+  B - No, I'm busy or something
+  C - Go away! I want to talk to ${c.selfName}
+  """;
 }

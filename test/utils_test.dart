@@ -5,27 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pesta/utils.dart';
 
 void main() {
-  group(
-      "Prompts",
-      () => {
-            // write a test to ensure that the kickoff prompt includes human readable times
-            test("Kickoffprompt parses times correctly", () {
-              final c = Conversation(
-                  'Paul',
-                  'Jacob',
-                  "73487234",
-                  'dinner',
-                  "",
-                  DateTimeRange(
-                      start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
-                      end: DateTime.fromMillisecondsSinceEpoch(1671933376654)));
-              final prompt = kickoffPrompt(
-                  c, DateTime.fromMillisecondsSinceEpoch(1671933376654));
-
-              expect(prompt.contains("2022-12-25 12:56:16.654"), true);
-            })
-          });
-
   group("Conversation", () {
     test('create sms', () {
       final c = Conversation(
