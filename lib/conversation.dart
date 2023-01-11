@@ -1,15 +1,28 @@
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:flutter/material.dart';
+import 'package:sqflite/sql.dart';
 
-enum TaskStatus {
-  ongoing,
-  success,
-  failure,
-  moot,
+enum Availability {
+  undetermined,
+  partiallyDetermined,
+  finalized,
+}
+
+class ConversationStatus {
+  Availability availability = Availability.undetermined;
+  List<DateTimeRange> availableTimes = [];
+
+  get isAvailable {
+    return availability == Availability.finalized && availableTimes.isNotEmpty;
+  }
+
+  addTime(DateTimeRange period) {
+    availableTimes.add(period);
+  }
 }
 
 class Conversation {
-  TaskStatus status = TaskStatus.ongoing;
+  ConversationStatus status = ConversationStatus();
   bool newResponse = false;
   String selfName;
   String otherName;

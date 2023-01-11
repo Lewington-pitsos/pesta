@@ -31,7 +31,8 @@ sendResponses(Task task, List<Conversation> activeConversations,
       case ResponseType.affirmative:
         {
           print("affirmative response");
-          c.status = TaskStatus.success;
+          c.status.addTime(task.times[0]);
+          c.status.availability = Availability.finalized;
 
           await sendText(successSMS(c), c.number);
           break;
@@ -39,7 +40,7 @@ sendResponses(Task task, List<Conversation> activeConversations,
 
       case ResponseType.negative:
         {
-          c.status = TaskStatus.failure;
+          c.status.availability = Availability.finalized;
 
           await sendText(failureSMS(c), c.number);
           break;
@@ -55,7 +56,7 @@ sendResponses(Task task, List<Conversation> activeConversations,
 
       case ResponseType.manualRequest:
         {
-          c.status = TaskStatus.failure;
+          c.status.availability = Availability.finalized;
 
           await sendText(manualRequestSMS(c), c.number);
           await Noti.showBigTextNotification(
@@ -79,7 +80,7 @@ sendResponses(Task task, List<Conversation> activeConversations,
 Future<bool> checkStatus(Task task, List<Conversation> conversations,
     FlutterLocalNotificationsPlugin notificationsPlugin) async {
   for (var c in conversations) {
-    if (c.status == TaskStatus.success) {
+    if (c.status.isAvailable) {
       await Noti.showBigTextNotification(
           title: "Success",
           body:
@@ -152,7 +153,7 @@ void holdConversations() {
       }
 
       activeConversations = activeConversations
-          .where((c) => c.status == TaskStatus.ongoing)
+          .where((c) => c.status.availability != Availability.finalized)
           .toList();
 
       print("awaiting ${activeConversations.length} responses}");
