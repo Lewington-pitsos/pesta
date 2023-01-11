@@ -35,7 +35,7 @@ String successSMS(Conversation c) {
 }
 
 String kickoffSMS(Conversation c, DateTime time) {
-  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity} at ${c.location} ${humanReadable(c.time)}. I can only understand these single letter responses:
+  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity} at ${c.location} ${humanReadable(c.times[0])}. I can only understand these single letter responses:
   A - Yes!
   B - No, I'm busy or something
   C - Go away! I want to talk to ${c.selfName}

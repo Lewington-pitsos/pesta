@@ -8,15 +8,11 @@ import 'package:pesta/conversation.dart';
 void main() {
   group("Conversation", () {
     test('create sms', () {
-      final c = Conversation(
-          'Paul',
-          'Jacob',
-          "+61342834665",
-          "dinner",
-          "",
-          DateTimeRange(
-              start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
-              end: DateTime.fromMillisecondsSinceEpoch(1671925276654)));
+      final c = Conversation('Paul', 'Jacob', "+61342834665", "dinner", "", [
+        DateTimeRange(
+            start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
+            end: DateTime.fromMillisecondsSinceEpoch(1671925276654))
+      ]);
 
       c.addSentMessage("howdy cowdy");
 
@@ -29,15 +25,11 @@ void main() {
       const address = "73487234";
       const paulAddress = "217489237493";
       const activity = 'dinner';
-      final c = Conversation(
-          'Paul',
-          'Jacob',
-          address,
-          activity,
-          "",
-          DateTimeRange(
-              start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
-              end: DateTime.fromMillisecondsSinceEpoch(1671925276654)));
+      final c = Conversation('Paul', 'Jacob', address, activity, "", [
+        DateTimeRange(
+            start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
+            end: DateTime.fromMillisecondsSinceEpoch(1671925276654))
+      ]);
       expect(c.text, "");
 
       const paulMessage1 = "Hey Jacob, let's go to dinner tonight";

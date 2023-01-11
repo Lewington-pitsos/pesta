@@ -19,29 +19,23 @@ import 'notification.dart';
 const databaseName = "taskdb6.db";
 const defaultName = "Louka";
 
-sendResponses(Task task, List<Conversation> activeConversations,
+sendResponses(Task task, List<Conversation> conversations,
     FlutterLocalNotificationsPlugin notificationsPlugin) async {
-  for (var c in activeConversations.where((c) => c.newResponse)) {
-    c.newResponse = false;
-    final responseType = await getResponseType(c);
-
-    print("got response type $responseType");
+  for (var c
+      in conversations.where((c) => c.nextResponse != ResponseType.none)) {
+    c.setResponded();
+    final responseType = c.nextResponse;
 
     switch (responseType) {
       case ResponseType.affirmative:
         {
           print("affirmative response");
-          c.status.addTime(task.times[0]);
-          c.status.availability = Availability.finalized;
-
           await sendText(successSMS(c), c.number);
           break;
         }
 
       case ResponseType.negative:
         {
-          c.status.availability = Availability.finalized;
-
           await sendText(failureSMS(c), c.number);
           break;
         }
@@ -56,8 +50,6 @@ sendResponses(Task task, List<Conversation> activeConversations,
 
       case ResponseType.manualRequest:
         {
-          c.status.availability = Availability.finalized;
-
           await sendText(manualRequestSMS(c), c.number);
           await Noti.showBigTextNotification(
               title: "help...",
@@ -80,7 +72,7 @@ sendResponses(Task task, List<Conversation> activeConversations,
 Future<bool> checkStatus(Task task, List<Conversation> conversations,
     FlutterLocalNotificationsPlugin notificationsPlugin) async {
   for (var c in conversations) {
-    if (c.status.isAvailable) {
+    if (c.isAvailable) {
       await Noti.showBigTextNotification(
           title: "Success",
           body:
@@ -123,13 +115,8 @@ void holdConversations() {
     }
 
     final List<Conversation> conversations = task.contacts
-        .map((c) => Conversation(
-            defaultName,
-            c.fullName!.split(" ")[0],
-            c.phoneNumber!.number!,
-            task.activity,
-            task.location,
-            task.times[0]))
+        .map((c) => Conversation(defaultName, c.fullName!.split(" ")[0],
+            c.phoneNumber!.number!, task.activity, task.location, task.times))
         .toList();
 
     print("these are the conversations: $conversations");
@@ -153,11 +140,11 @@ void holdConversations() {
       }
 
       activeConversations = activeConversations
-          .where((c) => c.status.availability != Availability.finalized)
+          .where((c) => c.availability != Availability.finalized)
           .toList();
 
       print("awaiting ${activeConversations.length} responses}");
-      await Future.delayed(const Duration(seconds: 15));
+      await Future.delayed(const Duration(seconds: 60 * 5));
     }
 
     await Noti.showBigTextNotification(
@@ -169,8 +156,6 @@ void holdConversations() {
     return false;
   });
 }
-
-enum ResponseType { affirmative, negative, unclear, manualRequest }
 
 Future<ResponseType> getResponseType(Conversation c) async {
   print("this is the conversation: ${c.text}");
@@ -202,7 +187,6 @@ Future updateConversations(List<Conversation> conversations) async {
           !c.contains(msg)) {
         print("adding message: ${msg.body}, ${msg.id}, ${msg.kind}");
         c.addMessage(msg);
-        c.newResponse = true;
       }
     }
   }
