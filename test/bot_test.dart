@@ -101,6 +101,33 @@ void main() {
       expect(outcome, true);
     });
   });
+
+  test("fails for for a single negative reply", () async {
+    final outcome = await conversationLoop(
+        task,
+        conversations,
+        textFn,
+        notiFn,
+        makeSmsQueryFn(messageBatches: {
+          "+61412341678": [
+            [],
+            [],
+            [
+              SmsMessage.fromJson({
+                "address": "+61412341678",
+                "body": "b",
+                "read": 1,
+                "kind": SmsMessageKind.sent,
+                "date": DateTime.now().millisecondsSinceEpoch,
+                "date_sent": DateTime.now().millisecondsSinceEpoch,
+              })
+            ]
+          ]
+        }),
+        interval: null);
+    expect(outcome, false);
+  });
+
   group("Conversation", () {
     test('create sms', () {
       final c = Conversation('Paul', 'Jacob', "+61342834665", "dinner", "", [
