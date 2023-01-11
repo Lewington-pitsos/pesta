@@ -36,6 +36,7 @@ CREATE TABLE tasks (
     location varchar(255) NOT NULL default '',
     deadline int NOT NULL,
     neediness int NOT NULL,
+    quorum int NOT NULL,
     status varchar(255) NOT NULL
 );
 """);
