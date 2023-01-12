@@ -40,6 +40,65 @@ void main() {
       expect(c2.availableTimes.length, 0);
       expect(c2.nextResponse, ResponseType.negative);
     });
+    test("correctly reads done", () {
+      expect(c2.availableTimes.length, 0);
+
+      c2.addMessage(SmsMessage.fromJson({
+        "address": "+612378213",
+        "body": "DONE",
+        "read": 1,
+        "kind": SmsMessageKind.sent,
+        "date": DateTime.now().millisecondsSinceEpoch,
+        "date_sent": DateTime.now().millisecondsSinceEpoch,
+      }));
+
+      expect(c2.availableTimes.length, 0);
+      expect(c2.nextResponse, ResponseType.done);
+
+      expect(c1.availableTimes.length, 0);
+
+      c1.addMessage(SmsMessage.fromJson({
+        "address": "+612378213",
+        "body": "DONE",
+        "read": 1,
+        "kind": SmsMessageKind.sent,
+        "date": DateTime.now().millisecondsSinceEpoch,
+        "date_sent": DateTime.now().millisecondsSinceEpoch,
+      }));
+
+      expect(c1.availableTimes.length, 0);
+      expect(c1.nextResponse, ResponseType.done);
+    });
+
+    test("correctly reads manual", () {
+      expect(c2.availableTimes.length, 0);
+
+      c2.addMessage(SmsMessage.fromJson({
+        "address": "+612378213",
+        "body": "c",
+        "read": 1,
+        "kind": SmsMessageKind.sent,
+        "date": DateTime.now().millisecondsSinceEpoch,
+        "date_sent": DateTime.now().millisecondsSinceEpoch,
+      }));
+
+      expect(c2.availableTimes.length, 0);
+      expect(c2.nextResponse, ResponseType.manualRequest);
+
+      expect(c1.availableTimes.length, 0);
+
+      c1.addMessage(SmsMessage.fromJson({
+        "address": "+612378213",
+        "body": "e",
+        "read": 1,
+        "kind": SmsMessageKind.sent,
+        "date": DateTime.now().millisecondsSinceEpoch,
+        "date_sent": DateTime.now().millisecondsSinceEpoch,
+      }));
+
+      expect(c1.availableTimes.length, 0);
+      expect(c1.nextResponse, ResponseType.manualRequest);
+    });
   });
 
   group("Multiple Times", () {

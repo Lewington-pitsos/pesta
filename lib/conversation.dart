@@ -36,6 +36,10 @@ ResponseData getResponseData(int optionCount, String message) {
 
   final lastMessage = message.toLowerCase().trim();
 
+  if (lastMessage == "done") {
+    return ResponseData(ResponseType.done, -1);
+  }
+
   if (lastMessage.length == 1) {
     final index = alphabet.indexOf(lastMessage);
 
@@ -45,8 +49,6 @@ ResponseData getResponseData(int optionCount, String message) {
       return ResponseData(ResponseType.negative, -1);
     } else if (index == optionCount + 1) {
       return ResponseData(ResponseType.manualRequest, -1);
-    } else if (index == optionCount + 2) {
-      return ResponseData(ResponseType.done, -1);
     }
   }
 

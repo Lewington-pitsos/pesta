@@ -32,6 +32,7 @@ void main() {
               expect(options.contains("c -"), true);
               expect(options.contains("d -"), true);
               expect(options.contains("e -"), true);
+              expect(options.contains("done -"), true);
               expect(options.contains("f -"), false);
             })
           });
