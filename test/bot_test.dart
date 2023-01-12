@@ -44,8 +44,10 @@ Future<List<SmsMessage>> Function({String? address, List<SmsQueryKind> kinds})
 void main() {
   late Task task;
   late Task twoTimeTask;
+  late Task quorumTask;
   late List<Conversation> conversations;
   late List<Conversation> twoTimeTaskConversations;
+  late List<Conversation> quorumTaskConversations;
 
   group("Conversation Loop", () {
     setUp(() {
@@ -53,6 +55,8 @@ void main() {
           PhoneContact("Jacob Sacher", PhoneNumber("04 1234 1678", "mobile"));
       final wendy =
           PhoneContact("wendy Woo", PhoneNumber("99 9999 9999", "mobile"));
+      final millie = PhoneContact(
+          "Millie Barren-Cohen", PhoneNumber("04 8888 8888", "mobile"));
 
       task = Task(
           contacts: [jacob, wendy],
@@ -80,6 +84,22 @@ void main() {
           ],
           deadline: DateTime.now().add(Duration(milliseconds: 50)));
       twoTimeTaskConversations = twoTimeTask.makeConversations();
+
+      quorumTask = Task(
+          contacts: [jacob, wendy, millie],
+          taskType: "invitation",
+          activity: "dinner",
+          times: [
+            DateTimeRange(
+                start: DateTime(2020, 1, 1, 12, 0),
+                end: DateTime(2020, 1, 1, 13, 0)),
+            DateTimeRange(
+                start: DateTime(2020, 1, 1, 13, 0),
+                end: DateTime(2020, 1, 1, 14, 0)),
+          ],
+          deadline: DateTime.now().add(Duration(milliseconds: 50)),
+          quorum: 3);
+      quorumTaskConversations = quorumTask.makeConversations();
     });
 
     test("when quorum is 2, second time succeeds", () async {
@@ -102,7 +122,109 @@ void main() {
               ]
             ]
           }),
-          interval: Duration(milliseconds: 20));
+          interval: Duration(milliseconds: 5));
+      expect(outcome, true);
+    });
+
+    test("when quorum is 3, one affirms is not enough", () async {
+      final outcome = await conversationLoop(
+          quorumTask,
+          quorumTaskConversations,
+          textFn,
+          notiFn,
+          makeSmsQueryFn(messageBatches: {
+            "+61412341678": [
+              [
+                SmsMessage.fromJson({
+                  "address": "+61412341678",
+                  "body": "b",
+                  "read": 1,
+                  "kind": SmsMessageKind.sent,
+                  "date": DateTime.now().millisecondsSinceEpoch,
+                  "date_sent": DateTime.now().millisecondsSinceEpoch,
+                })
+              ]
+            ]
+          }),
+          interval: Duration(milliseconds: 5));
+      expect(outcome, false);
+    });
+
+    test("when quorum is 3, two affirms at different times fail", () async {
+      final outcome = await conversationLoop(
+          quorumTask,
+          quorumTaskConversations,
+          textFn,
+          notiFn,
+          makeSmsQueryFn(messageBatches: {
+            "+61412341678": [
+              [
+                SmsMessage.fromJson({
+                  "address": "+61412341678",
+                  "body": "b",
+                  "read": 1,
+                  "kind": SmsMessageKind.sent,
+                  "date": DateTime.now().millisecondsSinceEpoch,
+                  "date_sent": DateTime.now().millisecondsSinceEpoch,
+                })
+              ]
+            ],
+            "+61488888888": [
+              [],
+              [],
+              [],
+              [
+                SmsMessage.fromJson({
+                  "address": "+61488888888",
+                  "body": "A",
+                  "read": 1,
+                  "kind": SmsMessageKind.sent,
+                  "date": DateTime.now().millisecondsSinceEpoch,
+                  "date_sent": DateTime.now().millisecondsSinceEpoch,
+                })
+              ]
+            ]
+          }),
+          interval: Duration(milliseconds: 5));
+      expect(outcome, false);
+    });
+
+    test("when quorum is 3, two affirms at the same time succeeds", () async {
+      final outcome = await conversationLoop(
+          quorumTask,
+          quorumTaskConversations,
+          textFn,
+          notiFn,
+          makeSmsQueryFn(messageBatches: {
+            "+61412341678": [
+              [
+                SmsMessage.fromJson({
+                  "address": "+61412341678",
+                  "body": "b",
+                  "read": 1,
+                  "kind": SmsMessageKind.sent,
+                  "date": DateTime.now().millisecondsSinceEpoch,
+                  "date_sent": DateTime.now().millisecondsSinceEpoch,
+                })
+              ]
+            ],
+            "+61488888888": [
+              [],
+              [],
+              [],
+              [
+                SmsMessage.fromJson({
+                  "address": "+61488888888",
+                  "body": "B",
+                  "read": 1,
+                  "kind": SmsMessageKind.sent,
+                  "date": DateTime.now().millisecondsSinceEpoch,
+                  "date_sent": DateTime.now().millisecondsSinceEpoch,
+                })
+              ]
+            ]
+          }),
+          interval: Duration(milliseconds: 5));
       expect(outcome, true);
     });
 

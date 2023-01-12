@@ -77,8 +77,8 @@ sendResponses(
   }
 }
 
-Future<bool> checkStatus(Task task, List<Conversation> conversations,
-    Future<dynamic> Function(String, String) notiFn) async {
+Future<Map<DateTimeRange, List<Conversation>>> checkStatus(
+    Task task, List<Conversation> conversations) async {
   final availableGuests = Map<DateTimeRange, List<Conversation>>();
   for (var c in conversations) {
     if (c.isAvailable) {
@@ -89,17 +89,16 @@ Future<bool> checkStatus(Task task, List<Conversation> conversations,
     }
   }
 
-  var success = false;
+  final quarumMeetingTimes = Map<DateTimeRange, List<Conversation>>();
 
   for (var t in availableGuests.keys) {
     final guests = availableGuests[t]!;
     if (guests.length >= task.quorum - 1) {
-      await notiFn("Success",
-          "We found ${guests.length} guests for ${task.activity}, at ${t.start} see your SMS history with ${guests.map((g) => g.otherName).join(", ")} for details.");
-      success = true;
+      quarumMeetingTimes[t] = guests;
     }
   }
-  return success;
+
+  return quarumMeetingTimes;
 }
 
 Future<bool> conversationLoop(
@@ -123,10 +122,20 @@ Future<bool> conversationLoop(
     print("checking ${activeConversations.length} conversations}");
     await updateConversations(activeConversations, smsQueryFn);
     await sendResponses(task, activeConversations, textFn, notiFn);
-    final success = await checkStatus(task, conversations, notiFn);
-    print("success $success");
+    final quarumMeetingTimes = await checkStatus(task, conversations);
+    print("quarum meeting times: $quarumMeetingTimes");
 
-    if (success) {
+    if (quarumMeetingTimes.isNotEmpty) {
+      final meetingTime = quarumMeetingTimes.keys.first;
+      final guests = quarumMeetingTimes[meetingTime]!;
+
+      for (var c in guests) {
+        await textFn(groupSuccessSMS(guests, meetingTime, c), c.number);
+      }
+
+      await notiFn("Success",
+          "${guests.map((g) => g.otherName).join(", ")} have all agreed to attend ${task.activity}, at ${meetingTime.start}. Everyone has been sent an SMS notification confirming everyone else's attendance. See SMS history with each guest for more details.");
+
       return true;
     }
 

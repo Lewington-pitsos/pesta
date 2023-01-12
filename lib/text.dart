@@ -55,8 +55,24 @@ String manualRequestSMS(Conversation c) {
   return "That's ok, I don't have feelings to hurt. I'll let ${c.selfName} know";
 }
 
+String groupSuccessSMS(List<Conversation> conversations,
+    DateTimeRange chosenTime, Conversation recepiantConversation) {
+  var sms = "Great news: ${recepiantConversation.selfName}, ";
+
+  sms += conversations
+      .where((c) => c != recepiantConversation)
+      .map((c) => c.otherName)
+      .toList()
+      .join((", "));
+
+  sms +=
+      " and you are doing ${recepiantConversation.activity} at ${dateOption(chosenTime)}!\nIf something changes please let everyone else know, but otherwise all the best!";
+
+  return sms;
+}
+
 String successSMS(Conversation c) {
-  return "Cool!. I'll let ${c.selfName} know";
+  return "Cool!. I'll add that availability to the database.";
 }
 
 String kickoffSMS(Conversation c, DateTime time) {
