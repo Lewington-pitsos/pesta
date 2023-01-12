@@ -221,8 +221,18 @@ class _PestaFormState extends State<PestaForm> {
             decoration: const InputDecoration(labelText: 'End Time'),
             initialValue: DateTime.now().add(Duration(hours: 6)),
           ),
+          const Text("Minimum attendees: "),
+          Container(
+              padding: new EdgeInsets.only(left: 20, right: 20),
+              child: FormBuilderSlider(
+                  enabled: contacts.length > 1,
+                  name: 'quorum',
+                  initialValue: 1,
+                  min: 1,
+                  max: contacts.length > 1 ? contacts.length.toDouble() : 1,
+                  divisions: contacts.length > 1 ? contacts.length - 1 : 1)),
           Column(children: [
-            Text("Contacts: "),
+            Text("invitees: (${contacts.length})"),
             SizedBox(
               height: 140,
               child: ListView.builder(
