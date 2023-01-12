@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'package:flutter/material.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
+import 'package:pesta/conversation.dart';
 
 String formatNumber(String phoneNumber) {
   var formatted = phoneNumber.replaceAll(" ", "");
@@ -61,6 +62,13 @@ class Task {
       'quorum': quorum,
       'status': status
     };
+  }
+
+  List<Conversation> makeConversations() {
+    return contacts
+        .map((c) => Conversation("Louka", c.fullName!.split(" ")[0],
+            c.phoneNumber!.number!, activity, location, times))
+        .toList();
   }
 }
 

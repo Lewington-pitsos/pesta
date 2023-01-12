@@ -43,7 +43,9 @@ Future<List<SmsMessage>> Function({String? address, List<SmsQueryKind> kinds})
 
 void main() {
   late Task task;
+  late Task twoTimeTask;
   late List<Conversation> conversations;
+  late List<Conversation> twoTimeTaskConversations;
 
   group("Conversation Loop", () {
     setUp(() {
@@ -61,11 +63,47 @@ void main() {
                 start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
                 end: DateTime.fromMillisecondsSinceEpoch(1671933376654))
           ],
-          deadline: DateTime.now().add(Duration(milliseconds: 200)));
-      conversations = task.contacts
-          .map((c) => Conversation(defaultName, c.fullName!.split(" ")[0],
-              c.phoneNumber!.number!, task.activity, task.location, task.times))
-          .toList();
+          deadline: DateTime.now().add(Duration(milliseconds: 50)));
+      conversations = task.makeConversations();
+
+      twoTimeTask = Task(
+          contacts: [jacob, wendy],
+          taskType: "invitation",
+          activity: "dinner",
+          times: [
+            DateTimeRange(
+                start: DateTime(2020, 1, 1, 12, 0),
+                end: DateTime(2020, 1, 1, 13, 0)),
+            DateTimeRange(
+                start: DateTime(2020, 1, 1, 13, 0),
+                end: DateTime(2020, 1, 1, 14, 0)),
+          ],
+          deadline: DateTime.now().add(Duration(milliseconds: 50)));
+      twoTimeTaskConversations = twoTimeTask.makeConversations();
+    });
+
+    test("when quorum is 2, second time succeeds", () async {
+      final outcome = await conversationLoop(
+          twoTimeTask,
+          twoTimeTaskConversations,
+          textFn,
+          notiFn,
+          makeSmsQueryFn(messageBatches: {
+            "+61412341678": [
+              [
+                SmsMessage.fromJson({
+                  "address": "+61412341678",
+                  "body": "b",
+                  "read": 1,
+                  "kind": SmsMessageKind.sent,
+                  "date": DateTime.now().millisecondsSinceEpoch,
+                  "date_sent": DateTime.now().millisecondsSinceEpoch,
+                })
+              ]
+            ]
+          }),
+          interval: Duration(milliseconds: 20));
+      expect(outcome, true);
     });
 
     test("fails for no replies", () async {

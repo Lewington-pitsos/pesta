@@ -2,16 +2,15 @@ import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:flutter/material.dart';
 import 'package:sqflite/sql.dart';
 
-enum Availability {
-  undetermined,
-  partiallyDetermined,
-  finalized,
-}
+enum Availability { undetermined, fullyDetermined, unavailable }
 
 enum ResponseType { none, affirmative, negative, unclear, done, manualRequest }
 
 const finalizingResponseTypes = [
   ResponseType.done,
+];
+
+const failingResponseTypes = [
   ResponseType.negative,
   ResponseType.manualRequest
 ];
@@ -103,19 +102,17 @@ class Conversation {
       final time = this.times[responseData.index];
       this.availableTimes.add(time);
 
-      if (this.availability == Availability.undetermined) {
-        this.availability = Availability.partiallyDetermined;
-      }
-
       if (this.availableTimes.length == this.times.length) {
-        this.availability = Availability.finalized;
+        this.availability = Availability.fullyDetermined;
       }
     }
 
     nextResponse = _getNextResponseType(responseData.type);
 
     if (finalizingResponseTypes.contains(nextResponse)) {
-      availability = Availability.finalized;
+      availability = Availability.fullyDetermined;
+    } else if (failingResponseTypes.contains(nextResponse)) {
+      availability = Availability.unavailable;
     }
 
     messages.add(message);
@@ -161,6 +158,7 @@ class Conversation {
   }
 
   get isAvailable {
-    return availability == Availability.finalized && availableTimes.isNotEmpty;
+    return availability != Availability.unavailable &&
+        availableTimes.isNotEmpty;
   }
 }

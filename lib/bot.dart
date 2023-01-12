@@ -17,7 +17,6 @@ import 'package:path/path.dart';
 import 'notification.dart';
 
 const databaseName = "taskdb7.db";
-const defaultName = "Louka";
 
 sendResponses(
     Task task,
@@ -80,15 +79,27 @@ sendResponses(
 
 Future<bool> checkStatus(Task task, List<Conversation> conversations,
     Future<dynamic> Function(String, String) notiFn) async {
+  final availableGuests = Map<DateTimeRange, List<Conversation>>();
   for (var c in conversations) {
     if (c.isAvailable) {
-      await notiFn("Success",
-          "${c.otherName} agreed to ${task.activity}, see your SMS history with ${c.otherName} for details.");
-      return true;
+      for (var t in c.availableTimes) {
+        availableGuests[t] = availableGuests[t] ?? [];
+        availableGuests[t]!.add(c);
+      }
     }
   }
 
-  return false;
+  var success = false;
+
+  for (var t in availableGuests.keys) {
+    final guests = availableGuests[t]!;
+    if (guests.length >= task.quorum - 1) {
+      await notiFn("Success",
+          "We found ${guests.length} guests for ${task.activity}, at ${t.start} see your SMS history with ${guests.map((g) => g.otherName).join(", ")} for details.");
+      success = true;
+    }
+  }
+  return success;
 }
 
 Future<bool> conversationLoop(
@@ -120,7 +131,7 @@ Future<bool> conversationLoop(
     }
 
     activeConversations = activeConversations
-        .where((c) => c.availability != Availability.finalized)
+        .where((c) => c.availability == Availability.undetermined)
         .toList();
 
     print("awaiting ${activeConversations.length} responses}");
@@ -164,11 +175,7 @@ void holdConversations() {
       return false;
     }
 
-    final List<Conversation> conversations = task.contacts
-        .map((c) => Conversation(defaultName, c.fullName!.split(" ")[0],
-            c.phoneNumber!.number!, task.activity, task.location, task.times))
-        .toList();
-
+    final List<Conversation> conversations = task.makeConversations();
     const textFn = sendText;
     notiFn(String title, String body) => Noti.showBigTextNotification(
         title: title, body: body, fln: notificationsPlugin);
