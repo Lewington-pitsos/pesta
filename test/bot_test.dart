@@ -45,29 +45,29 @@ void main() {
   late Task task;
   late List<Conversation> conversations;
 
-  setUp(() {
-    final jacob =
-        PhoneContact("Jacob Sacher", PhoneNumber("04 1234 1678", "mobile"));
-    final wendy =
-        PhoneContact("wendy Woo", PhoneNumber("99 9999 9999", "mobile"));
-
-    task = Task(
-        contacts: [jacob, wendy],
-        taskType: "invitation",
-        activity: "dinner",
-        times: [
-          DateTimeRange(
-              start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
-              end: DateTime.fromMillisecondsSinceEpoch(1671933376654))
-        ],
-        deadline: DateTime.now().add(Duration(milliseconds: 200)));
-    conversations = task.contacts
-        .map((c) => Conversation(defaultName, c.fullName!.split(" ")[0],
-            c.phoneNumber!.number!, task.activity, task.location, task.times))
-        .toList();
-  });
-
   group("Conversation Loop", () {
+    setUp(() {
+      final jacob =
+          PhoneContact("Jacob Sacher", PhoneNumber("04 1234 1678", "mobile"));
+      final wendy =
+          PhoneContact("wendy Woo", PhoneNumber("99 9999 9999", "mobile"));
+
+      task = Task(
+          contacts: [jacob, wendy],
+          taskType: "invitation",
+          activity: "dinner",
+          times: [
+            DateTimeRange(
+                start: DateTime.fromMillisecondsSinceEpoch(1671925246654),
+                end: DateTime.fromMillisecondsSinceEpoch(1671933376654))
+          ],
+          deadline: DateTime.now().add(Duration(milliseconds: 200)));
+      conversations = task.contacts
+          .map((c) => Conversation(defaultName, c.fullName!.split(" ")[0],
+              c.phoneNumber!.number!, task.activity, task.location, task.times))
+          .toList();
+    });
+
     test("fails for no replies", () async {
       final outcome = await conversationLoop(
           task, conversations, textFn, notiFn, makeSmsQueryFn(),

@@ -14,6 +14,19 @@ String humanReadable(DateTimeRange time) {
   return "between ${time.start.hour} and ${time.end.hour} on the the ${time.start.day}$suffix";
 }
 
+String dateOption(DateTimeRange time) {
+  var suffix = "th";
+  if (time.start.day == 1) {
+    suffix = "st";
+  } else if (time.start.day == 2) {
+    suffix = "nd";
+  } else if (time.start.day == 3) {
+    suffix = "rd";
+  }
+
+  return "${time.start.hour}00-${time.end.hour}00 on the ${time.start.day}$suffix";
+}
+
 String failureSMS(Conversation c) {
   return """I see... ${c.selfName} might be sad but I it's ok""";
 }
@@ -21,11 +34,13 @@ String failureSMS(Conversation c) {
 String responseOptions(Conversation c) {
   var options = "";
   for (var i = 0; i < c.times.length; i++) {
-    options += "${alphabet[i]} - ${humanReadable(c.times[i])}\n";
+    options += "${alphabet[i]} - ${dateOption(c.times[i])} works for me!\n";
   }
   options += "${alphabet[c.times.length]} - No, I'm busy or something\n";
   options +=
-      "${alphabet[c.times.length + 1]} - Go away! I want to talk to ${c.selfName}";
+      "${alphabet[c.times.length + 1]} - Go away! I want to talk to ${c.selfName}\n";
+
+  options += "done - i have entered all my times";
 
   return options;
 }
@@ -45,7 +60,7 @@ String successSMS(Conversation c) {
 }
 
 String kickoffSMS(Conversation c, DateTime time) {
-  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity} at ${c.location} ${humanReadable(c.times[0])}. I can only understand these single letter responses:
+  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity}. I can only understand these single letter responses:
   ${responseOptions(c)}
   """;
 }

@@ -42,11 +42,11 @@ ResponseData getResponseData(int optionCount, String message) {
     if (index >= 0 && index < optionCount) {
       return ResponseData(ResponseType.affirmative, index);
     } else if (index == optionCount) {
-      return ResponseData(ResponseType.manualRequest, -1);
-    } else if (index == optionCount + 1) {
-      return ResponseData(ResponseType.done, -1);
-    } else if (index == optionCount + 2) {
       return ResponseData(ResponseType.negative, -1);
+    } else if (index == optionCount + 1) {
+      return ResponseData(ResponseType.manualRequest, -1);
+    } else if (index == optionCount + 2) {
+      return ResponseData(ResponseType.done, -1);
     }
   }
 
