@@ -99,6 +99,7 @@ class Conversation {
     final responseData = getResponseData(times.length, message.body ?? "");
 
     if (responseData.type == ResponseType.affirmative) {
+      print("adding time");
       final time = this.times[responseData.index];
       this.availableTimes.add(time);
 

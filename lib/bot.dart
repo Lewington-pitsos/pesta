@@ -29,6 +29,8 @@ sendResponses(
     final responseType = c.nextResponse;
     c.setResponded();
 
+    print("response type $responseType");
+
     switch (responseType) {
       case ResponseType.affirmative:
         {
@@ -39,6 +41,7 @@ sendResponses(
 
       case ResponseType.negative:
         {
+          print("negative response");
           await textFn(failureSMS(c), c.number);
           break;
         }
@@ -110,6 +113,7 @@ Future<bool> conversationLoop(
     await updateConversations(activeConversations, smsQueryFn);
     await sendResponses(task, activeConversations, textFn, notiFn);
     final success = await checkStatus(task, conversations, notiFn);
+    print("success $success");
 
     if (success) {
       return true;
