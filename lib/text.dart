@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:pesta/conversation.dart';
 
+String monthFormat(DateTime time) {
+  return "${time.day}/${time.month}/${time.year} at ${time.hour}:00";
+}
+
+String compactFormat(DateTimeRange time) {
+  return "${monthFormat(time.start)} - ${monthFormat(time.end)}";
+}
+
 String humanReadable(DateTimeRange time) {
   var suffix = "th";
   if (time.start.day == 1) {

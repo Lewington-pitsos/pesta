@@ -10,6 +10,7 @@ import 'package:background_sms/background_sms.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path/path.dart';
 import 'package:pesta/notification.dart';
+import 'package:pesta/text.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:pesta/bot.dart';
@@ -178,15 +179,24 @@ class _PestaFormState extends State<PestaForm> {
   List<PhoneContact> contacts = [];
   Database? db;
   List<DateTimeRange> times = [];
+  bool canAddTimes = true;
 
   @override
   void initState() {
     super.initState();
   }
 
-  DateTimeRange _getTime() {
+  DateTimeRange? _getTime() {
     _formKey.currentState?.save();
     final formData = _formKey.currentState?.value;
+
+    if (formData == null) {
+      return null;
+    }
+
+    if (formData['startTime'] == null || formData['endTime'] == null) {
+      return null;
+    }
 
     return DateTimeRange(
         start: formData!['startTime'], end: formData!['endTime']);
@@ -224,15 +234,13 @@ class _PestaFormState extends State<PestaForm> {
             Text("Time Windows (${times.length})"),
             SizedBox(
               height: 100,
-              child: ListView.builder(
-                scrollDirection: Axis.vertical,
-                itemCount: times.length,
-                itemBuilder: (context, index) {
-                  final time = times[index];
-
-                  return ListTile(title: Text(time.start.toString()));
-                },
-              ),
+              child: Wrap(
+                  direction: Axis.horizontal,
+                  children: times
+                      .map((t) => Container(
+                          padding: EdgeInsets.all(4),
+                          child: Text(compactFormat(t) + ',')))
+                      .toList()),
             ),
             Row(children: [
               Expanded(
@@ -244,6 +252,14 @@ class _PestaFormState extends State<PestaForm> {
                       decoration:
                           const InputDecoration(labelText: 'Start Time'),
                       initialValue: DateTime.now().add(Duration(hours: 3)),
+                      onChanged: (time) => {
+                        if (!times.contains(_getTime()))
+                          {
+                            setState(() {
+                              canAddTimes = true;
+                            })
+                          }
+                      },
                     )),
               ),
               Expanded(
@@ -254,24 +270,32 @@ class _PestaFormState extends State<PestaForm> {
                       name: 'endTime',
                       decoration: const InputDecoration(labelText: 'End Time'),
                       initialValue: DateTime.now().add(Duration(hours: 6)),
+                      onChanged: (time) => {
+                        if (!times.contains(_getTime()))
+                          {
+                            setState(() {
+                              canAddTimes = true;
+                            })
+                          }
+                      },
                     )),
               )
             ]),
             ElevatedButton(
-                onPressed: () async {
-                  final time = _getTime();
-                  if (!times.contains(time)) {
-                    times.add(time);
-                    setState(() {
-                      times = times;
-                    });
-                  }
-                },
-                child: new Text('Add Time'))
+                onPressed: canAddTimes
+                    ? () {
+                        times.add(_getTime()!);
+                        setState(() {
+                          times = times;
+                          canAddTimes = false;
+                        });
+                      }
+                    : null,
+                child: Text('Add Time'))
           ]),
           const Text("Minimum attendees: "),
           Container(
-              padding: new EdgeInsets.only(left: 20, right: 20),
+              padding: EdgeInsets.only(left: 20, right: 20),
               child: FormBuilderSlider(
                   enabled: contacts.length > 1,
                   name: 'quorum',
@@ -283,16 +307,13 @@ class _PestaFormState extends State<PestaForm> {
             Text("invitees: (${contacts.length})"),
             SizedBox(
               height: 100,
-              child: ListView.builder(
-                scrollDirection: Axis.vertical,
-                itemCount: contacts.length,
-                itemBuilder: (context, index) {
-                  final contact = contacts[index];
-
-                  return ListTile(
-                      title: Text(contact.fullName ?? "unknown contact"));
-                },
-              ),
+              child: Wrap(
+                  direction: Axis.horizontal,
+                  children: contacts
+                      .map((c) => Container(
+                          padding: EdgeInsets.all(4),
+                          child: Text((c.fullName ?? "unknown contact") + ',')))
+                      .toList()),
             ),
             ElevatedButton(
               onPressed: () async {
