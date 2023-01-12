@@ -281,7 +281,8 @@ class _PestaFormState extends State<PestaForm> {
                           contacts: contacts,
                           taskType: taskType,
                           activity: formData!['activity'],
-                          times: [timeOptions]);
+                          times: [timeOptions],
+                          quorum: formData['quorum'].toInt() + 1);
 
                       db ??= await openDatabase(
                         join(await getDatabasesPath(), databaseName),
