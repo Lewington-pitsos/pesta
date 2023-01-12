@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'package:flutter/material.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
+import 'package:pesta/conversation.dart';
 
 String formatNumber(String phoneNumber) {
   var formatted = phoneNumber.replaceAll(" ", "");
@@ -17,6 +18,7 @@ String formatNumber(String phoneNumber) {
 
 class Task {
   String taskType;
+  int quorum;
   String activity;
   List<DateTimeRange> times;
   String location;
@@ -31,6 +33,7 @@ class Task {
       this.location = '',
       DateTime? deadline = null,
       this.neediness = 0,
+      this.quorum = 2,
       this.status = 'initialization'}) {
     this.contacts = contacts
         .map((c) => PhoneContact(
@@ -56,8 +59,16 @@ class Task {
       'location': location,
       'deadline': deadline.millisecondsSinceEpoch,
       'neediness': neediness,
+      'quorum': quorum,
       'status': status
     };
+  }
+
+  List<Conversation> makeConversations() {
+    return contacts
+        .map((c) => Conversation("Louka", c.fullName!.split(" ")[0],
+            c.phoneNumber!.number!, activity, location, times))
+        .toList();
   }
 }
 
@@ -91,7 +102,8 @@ Future<Task?> loadTask(int taskId, Database db) async {
         'location',
         'deadline',
         'neediness',
-        'status'
+        'status',
+        'quorum',
       ],
       where: 'id = ?',
       whereArgs: [taskId]);
@@ -127,6 +139,7 @@ Future<Task?> loadTask(int taskId, Database db) async {
       location: taskMaps[0]['location'],
       deadline: DateTime.fromMillisecondsSinceEpoch(taskMaps[0]['deadline']),
       neediness: taskMaps[0]['neediness'],
+      quorum: taskMaps[0]['quorum'],
       status: taskMaps[0]['status']);
 }
 

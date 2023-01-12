@@ -16,8 +16,7 @@ import 'package:path/path.dart';
 
 import 'notification.dart';
 
-const databaseName = "taskdb6.db";
-const defaultName = "Louka";
+const databaseName = "taskdb7.db";
 
 sendResponses(
     Task task,
@@ -26,8 +25,10 @@ sendResponses(
     Future<dynamic> Function(String, String) notiFn) async {
   for (var c
       in conversations.where((c) => c.nextResponse != ResponseType.none)) {
-    c.setResponded();
     final responseType = c.nextResponse;
+    c.setResponded();
+
+    print("response type $responseType");
 
     switch (responseType) {
       case ResponseType.affirmative:
@@ -39,6 +40,7 @@ sendResponses(
 
       case ResponseType.negative:
         {
+          print("negative response");
           await textFn(failureSMS(c), c.number);
           break;
         }
@@ -60,6 +62,12 @@ sendResponses(
           break;
         }
 
+      case ResponseType.none:
+        {
+          throw Exception(
+              "response type $responseType should not be possible: $c");
+        }
+
       default:
         {
           throw Exception(
@@ -69,17 +77,28 @@ sendResponses(
   }
 }
 
-Future<bool> checkStatus(Task task, List<Conversation> conversations,
-    Future<dynamic> Function(String, String) notiFn) async {
+Future<Map<DateTimeRange, List<Conversation>>> checkStatus(
+    Task task, List<Conversation> conversations) async {
+  final availableGuests = Map<DateTimeRange, List<Conversation>>();
   for (var c in conversations) {
     if (c.isAvailable) {
-      await notiFn("Success",
-          "${c.otherName} agreed to ${task.activity}, see your SMS history with ${c.otherName} for details.");
-      return true;
+      for (var t in c.availableTimes) {
+        availableGuests[t] = availableGuests[t] ?? [];
+        availableGuests[t]!.add(c);
+      }
     }
   }
 
-  return false;
+  final quarumMeetingTimes = Map<DateTimeRange, List<Conversation>>();
+
+  for (var t in availableGuests.keys) {
+    final guests = availableGuests[t]!;
+    if (guests.length >= task.quorum - 1) {
+      quarumMeetingTimes[t] = guests;
+    }
+  }
+
+  return quarumMeetingTimes;
 }
 
 Future<bool> conversationLoop(
@@ -89,7 +108,8 @@ Future<bool> conversationLoop(
     Future<dynamic> Function(String, String) notiFn,
     Future<List<SmsMessage>> Function(
             {String? address, List<SmsQueryKind> kinds})
-        smsQueryFn) async {
+        smsQueryFn,
+    {Duration? interval = const Duration(seconds: 60 * 5)}) async {
   for (var c in conversations) {
     await textFn(kickoffSMS(c, DateTime.now()), c.number);
   }
@@ -102,18 +122,31 @@ Future<bool> conversationLoop(
     print("checking ${activeConversations.length} conversations}");
     await updateConversations(activeConversations, smsQueryFn);
     await sendResponses(task, activeConversations, textFn, notiFn);
-    final success = await checkStatus(task, conversations, notiFn);
+    final quarumMeetingTimes = await checkStatus(task, conversations);
+    print("quarum meeting times: $quarumMeetingTimes");
 
-    if (success) {
+    if (quarumMeetingTimes.isNotEmpty) {
+      final meetingTime = quarumMeetingTimes.keys.first;
+      final guests = quarumMeetingTimes[meetingTime]!;
+
+      for (var c in guests) {
+        await textFn(groupSuccessSMS(guests, meetingTime, c), c.number);
+      }
+
+      await notiFn("Success",
+          "${guests.map((g) => g.otherName).join(", ")} have all agreed to attend ${task.activity}, at ${meetingTime.start}. Everyone has been sent an SMS notification confirming everyone else's attendance. See SMS history with each guest for more details.");
+
       return true;
     }
 
     activeConversations = activeConversations
-        .where((c) => c.availability != Availability.finalized)
+        .where((c) => c.availability == Availability.undetermined)
         .toList();
 
     print("awaiting ${activeConversations.length} responses}");
-    await Future.delayed(const Duration(seconds: 60 * 5));
+    if (interval != null) {
+      await Future.delayed(interval);
+    }
   }
 
   await notiFn("No takers",
@@ -134,7 +167,7 @@ void holdConversations() {
 
     final taskId = inputData!["taskId"];
     final database = await openDatabase(
-      join(await getDatabasesPath(), 'taskdb6.db'),
+      join(await getDatabasesPath(), databaseName),
       version: 2,
     );
 
@@ -151,11 +184,7 @@ void holdConversations() {
       return false;
     }
 
-    final List<Conversation> conversations = task.contacts
-        .map((c) => Conversation(defaultName, c.fullName!.split(" ")[0],
-            c.phoneNumber!.number!, task.activity, task.location, task.times))
-        .toList();
-
+    final List<Conversation> conversations = task.makeConversations();
     const textFn = sendText;
     notiFn(String title, String body) => Noti.showBigTextNotification(
         title: title, body: body, fln: notificationsPlugin);
@@ -193,6 +222,7 @@ Future updateConversations(
             {String? address, List<SmsQueryKind> kinds})
         smsQueryFn) async {
   for (var c in conversations) {
+    print("address ${c.number}");
     final List<SmsMessage> messages =
         await smsQueryFn(address: c.number, kinds: [SmsQueryKind.inbox]);
 
