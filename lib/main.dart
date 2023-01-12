@@ -177,10 +177,19 @@ class _PestaFormState extends State<PestaForm> {
   static List<String> enabledTasks = [tasks[0]];
   List<PhoneContact> contacts = [];
   Database? db;
+  List<DateTimeRange> times = [];
 
   @override
   void initState() {
     super.initState();
+  }
+
+  DateTimeRange _getTime() {
+    _formKey.currentState?.save();
+    final formData = _formKey.currentState?.value;
+
+    return DateTimeRange(
+        start: formData!['startTime'], end: formData!['endTime']);
   }
 
   @override
@@ -211,16 +220,55 @@ class _PestaFormState extends State<PestaForm> {
             decoration: const InputDecoration(labelText: "activity"),
             initialValue: "dinner",
           ),
-          FormBuilderDateTimePicker(
-            name: 'startTime',
-            decoration: const InputDecoration(labelText: 'Start Time'),
-            initialValue: DateTime.now().add(Duration(hours: 3)),
-          ),
-          FormBuilderDateTimePicker(
-            name: 'endTime',
-            decoration: const InputDecoration(labelText: 'End Time'),
-            initialValue: DateTime.now().add(Duration(hours: 6)),
-          ),
+          Column(children: [
+            Text("Time Windows (${times.length})"),
+            SizedBox(
+              height: 100,
+              child: ListView.builder(
+                scrollDirection: Axis.vertical,
+                itemCount: times.length,
+                itemBuilder: (context, index) {
+                  final time = times[index];
+
+                  return ListTile(title: Text(time.start.toString()));
+                },
+              ),
+            ),
+            Row(children: [
+              Expanded(
+                flex: 1,
+                child: Container(
+                    padding: const EdgeInsets.all(2),
+                    child: FormBuilderDateTimePicker(
+                      name: 'startTime',
+                      decoration:
+                          const InputDecoration(labelText: 'Start Time'),
+                      initialValue: DateTime.now().add(Duration(hours: 3)),
+                    )),
+              ),
+              Expanded(
+                flex: 1,
+                child: Container(
+                    padding: const EdgeInsets.all(2),
+                    child: FormBuilderDateTimePicker(
+                      name: 'endTime',
+                      decoration: const InputDecoration(labelText: 'End Time'),
+                      initialValue: DateTime.now().add(Duration(hours: 6)),
+                    )),
+              )
+            ]),
+            ElevatedButton(
+                onPressed: () async {
+                  final time = _getTime();
+                  if (!times.contains(time)) {
+                    times.add(time);
+                    setState(() {
+                      times = times;
+                    });
+                  }
+                },
+                child: new Text('Add Time'))
+          ]),
           const Text("Minimum attendees: "),
           Container(
               padding: new EdgeInsets.only(left: 20, right: 20),
@@ -234,7 +282,7 @@ class _PestaFormState extends State<PestaForm> {
           Column(children: [
             Text("invitees: (${contacts.length})"),
             SizedBox(
-              height: 140,
+              height: 100,
               child: ListView.builder(
                 scrollDirection: Axis.vertical,
                 itemCount: contacts.length,
@@ -261,7 +309,7 @@ class _PestaFormState extends State<PestaForm> {
             ),
           ]),
           ElevatedButton(
-              onPressed: contacts.length > 0
+              onPressed: contacts.length > 0 && times.length > 0
                   ? () async {
                       _formKey.currentState?.save();
                       final formData = _formKey.currentState?.value;
@@ -273,15 +321,11 @@ class _PestaFormState extends State<PestaForm> {
                               textScaleFactor: 1.5),
                           duration: Duration(seconds: 3)));
 
-                      final timeOptions = DateTimeRange(
-                          start: formData!['startTime'],
-                          end: formData!['endTime']);
-
                       final task = Task(
                           contacts: contacts,
                           taskType: taskType,
                           activity: formData!['activity'],
-                          times: [timeOptions],
+                          times: times,
                           quorum: formData['quorum'].toInt() + 1);
 
                       db ??= await openDatabase(
