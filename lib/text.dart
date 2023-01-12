@@ -18,11 +18,21 @@ String failureSMS(Conversation c) {
   return """I see... ${c.selfName} might be sad but I it's ok""";
 }
 
+String responseOptions(Conversation c) {
+  var options = "";
+  for (var i = 0; i < c.times.length; i++) {
+    options += "${alphabet[i]} - ${humanReadable(c.times[i])}\n";
+  }
+  options += "${alphabet[c.times.length]} - No, I'm busy or something\n";
+  options +=
+      "${alphabet[c.times.length + 1]} - Go away! I want to talk to ${c.selfName}";
+
+  return options;
+}
+
 String clarificationSMS(Conversation c) {
   return """I couldn't understand your last message. I'm just a simple bot, I need one of these (single letter) responses:
-  A - Yes, let's do it!
-  B - No, I'm busy
-  C - Go away! I want to talk to ${c.selfName}
+  ${responseOptions(c)}
   """;
 }
 
@@ -36,8 +46,6 @@ String successSMS(Conversation c) {
 
 String kickoffSMS(Conversation c, DateTime time) {
   return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity} at ${c.location} ${humanReadable(c.times[0])}. I can only understand these single letter responses:
-  A - Yes!
-  B - No, I'm busy or something
-  C - Go away! I want to talk to ${c.selfName}
+  ${responseOptions(c)}
   """;
 }
