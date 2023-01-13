@@ -16,6 +16,7 @@ import 'package:pesta/bot.dart';
 import 'package:pesta/task.dart';
 import 'package:pesta/conversation.dart';
 import 'package:pesta/sms.dart';
+import 'package:diacritic/diacritic.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +69,12 @@ CREATE TABLE times (
   } else {
     print("database already exists");
   }
+
+  // await sendSms(
+  //     "+XXXXX",
+  //     removeDiacritics(
+  //         "Hi, Jack I'm a bot. Louka sent me to ask if you want to do pesta jam session ft. jack, dylan, louka and lawrence at 2/29 bell steeet hawthorb. I can only understand these single letter responses:"));
+  // print("sent sms");
 
   runApp(PestaOrigin());
 }

@@ -1,4 +1,5 @@
 import 'package:background_sms/background_sms.dart';
+import 'package:diacritic/diacritic.dart';
 
 List<String> breakUp(String message) {
   final List<String> brokenMessages = [];
@@ -37,7 +38,7 @@ List<String> breakUp(String message) {
 }
 
 Future<bool> sendSms(String phoneNumber, String fullMessage) async {
-  final messages = breakUp(fullMessage);
+  final messages = breakUp(removeDiacritics(fullMessage));
 
   for (final shortMessage in messages) {
     final result = await send160CharSms(phoneNumber, shortMessage);
