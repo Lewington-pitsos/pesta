@@ -16,8 +16,18 @@ String formatNumber(String phoneNumber) {
   return formatted;
 }
 
+enum TaskType { notification, catchUp, groupSession, askToBorrow }
+
+final taskToNameMap = {
+  TaskType.notification: 'Notification',
+  TaskType.catchUp: 'Catch-Up',
+  TaskType.groupSession: 'Group Session',
+  TaskType.askToBorrow: 'Ask To Borrow'
+};
+final nameToTaskMap = taskToNameMap.map((k, v) => MapEntry(v, k));
+
 class Task {
-  String taskType;
+  TaskType taskType;
   int quorum;
   String activity;
   List<DateTimeRange> times;
@@ -49,12 +59,12 @@ class Task {
   late final DateTime deadline;
   @override
   String toString() {
-    return 'Task{type: $taskType, activity: $activity, contacts: $contacts times: $times, location: $location, deadline: $deadline, neediness: $neediness, status: $status}';
+    return 'Task{type: ${taskToNameMap[taskType]}, activity: $activity, contacts: $contacts times: $times, location: $location, deadline: $deadline, neediness: $neediness, status: $status}';
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'taskType': taskType,
+      'taskType': taskToNameMap[taskType],
       'activity': activity,
       'location': location,
       'deadline': deadline.millisecondsSinceEpoch,
@@ -133,7 +143,7 @@ Future<Task?> loadTask(int taskId, Database db) async {
 
   return Task(
       contacts: contacts,
-      taskType: taskMaps[0]['taskType'],
+      taskType: nameToTaskMap[taskMaps[0]['taskType']]!,
       activity: taskMaps[0]['activity'],
       times: times,
       location: taskMaps[0]['location'],

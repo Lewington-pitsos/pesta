@@ -169,16 +169,6 @@ class _TaskFormState extends State<TaskForm> {
   }
 }
 
-enum TaskType { notification, catchUp, groupSession, askToBorrow }
-
-final taskToNameMap = {
-  TaskType.notification: 'Notification',
-  TaskType.catchUp: 'Catch-Up',
-  TaskType.groupSession: 'Group Session',
-  TaskType.askToBorrow: 'Ask To Borrow'
-};
-final nameToTaskMap = taskToNameMap.map((k, v) => MapEntry(v, k));
-
 class PestaForm extends StatefulWidget {
   const PestaForm({super.key});
 
@@ -394,7 +384,7 @@ class _PestaFormState extends State<PestaForm> {
 
                           final task = Task(
                               contacts: contacts,
-                              taskType: taskToNameMap[taskType]!,
+                              taskType: taskType!,
                               activity: formData!['activity'],
                               times: times,
                               quorum: formData['quorum'].toInt() + 1);
@@ -410,7 +400,7 @@ class _PestaFormState extends State<PestaForm> {
 
                           await Workmanager().registerOneOffTask(
                             DateTime.now().second.toString(),
-                            task.taskType,
+                            taskToNameMap[task.taskType]!,
                             inputData: {'taskId': taskId},
                           );
                         }
