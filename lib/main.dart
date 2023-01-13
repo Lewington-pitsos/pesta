@@ -16,6 +16,7 @@ import 'package:pesta/bot.dart';
 import 'package:pesta/task.dart';
 import 'package:pesta/conversation.dart';
 import 'package:pesta/sms.dart';
+import 'package:diacritic/diacritic.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +69,12 @@ CREATE TABLE times (
   } else {
     print("database already exists");
   }
+
+  // await sendSms(
+  //     "+XXXXX",
+  //     removeDiacritics(
+  //         "Hi, Jack I'm a bot. Louka sent me to ask if you want to do pesta jam session ft. jack, dylan, louka and lawrence at 2/29 bell steeet hawthorb. I can only understand these single letter responses:"));
+  // print("sent sms");
 
   runApp(PestaOrigin());
 }
@@ -172,11 +179,13 @@ class PestaForm extends StatefulWidget {
 class _PestaFormState extends State<PestaForm> {
   final _formKey = GlobalKey<FormBuilderState>();
   static List<String> tasks = [
-    'Catch-Up',
-    'Group Session (coming soon)',
-    'Ask To Borrow (coming soon)'
+    taskToNameMap[TaskType.notification]!,
+    taskToNameMap[TaskType.catchUp]!,
+    taskToNameMap[TaskType.groupSession]!,
+    taskToNameMap[TaskType.askToBorrow]!,
   ];
-  static List<String> enabledTasks = [tasks[0]];
+  static List<String> enabledTasks = [tasks[0], tasks[1]];
+  TaskType taskType = TaskType.notification;
   List<PhoneContact> contacts = [];
   Database? db;
   List<DateTimeRange> times = [];
@@ -185,6 +194,10 @@ class _PestaFormState extends State<PestaForm> {
   @override
   void initState() {
     super.initState();
+  }
+
+  bool get _timeBasedTask {
+    return taskType == TaskType.groupSession || taskType == TaskType.catchUp;
   }
 
   DateTimeRange? _getTime() {
@@ -212,7 +225,14 @@ class _PestaFormState extends State<PestaForm> {
     return Center(
         child: FormBuilder(
       key: _formKey,
-      onChanged: () => print("form has changed"),
+      onChanged: () {
+        _formKey.currentState?.save();
+        final formData = _formKey.currentState?.value;
+        taskType = nameToTaskMap[formData!['task']!]!;
+        setState(() {
+          taskType = taskType;
+        });
+      },
       autovalidateMode: AutovalidateMode.onUserInteraction,
       initialValue: {
         "task": tasks[0],
@@ -225,95 +245,107 @@ class _PestaFormState extends State<PestaForm> {
             items: tasks
                 .map((item) => DropdownMenuItem<String>(
                     value: item,
-                    child: Text(item),
-                    enabled: enabledTasks.contains(item)))
+                    enabled: enabledTasks.contains(item),
+                    child: enabledTasks.contains(item)
+                        ? Text(item)
+                        : Text(item,
+                            style: const TextStyle(color: Colors.grey))))
                 .toList(),
             decoration: const InputDecoration(labelText: 'Task'),
           ),
           FormBuilderTextField(
             name: "activity",
-            decoration: const InputDecoration(labelText: "activity"),
-            initialValue: "dinner",
+            decoration: const InputDecoration(labelText: "description"),
           ),
-          Column(children: [
-            Text("Time Windows (${times.length})"),
-            SizedBox(
-              height: 100,
-              child: Wrap(
-                  direction: Axis.horizontal,
-                  children: times
-                      .map((t) => Container(
-                          padding: EdgeInsets.all(4),
-                          child: Text(compactFormat(t) + ',')))
-                      .toList()),
-            ),
-            Row(children: [
-              Expanded(
-                flex: 1,
-                child: Container(
-                    padding: const EdgeInsets.all(2),
-                    child: FormBuilderDateTimePicker(
-                      name: 'startTime',
-                      decoration:
-                          const InputDecoration(labelText: 'Start Time'),
-                      initialValue: DateTime.now().add(Duration(hours: 3)),
-                      onChanged: (time) => {
-                        if (!times.contains(_getTime()))
-                          {
-                            setState(() {
-                              canAddTimes = true;
-                            })
-                          }
-                      },
-                    )),
-              ),
-              Expanded(
-                flex: 1,
-                child: Container(
-                    padding: const EdgeInsets.all(2),
-                    child: FormBuilderDateTimePicker(
-                      name: 'endTime',
-                      decoration: const InputDecoration(labelText: 'End Time'),
-                      initialValue: DateTime.now().add(Duration(hours: 6)),
-                      onChanged: (time) => {
-                        if (!times.contains(_getTime()))
-                          {
-                            setState(() {
-                              canAddTimes = true;
-                            })
-                          }
-                      },
-                    )),
-              )
-            ]),
-            ElevatedButton(
-                onPressed: canAddTimes
-                    ? () {
-                        final time = _getTime();
+          _timeBasedTask
+              ? Column(key: Key("time-and-quarum"), children: [
+                  Text("Time Windows (${times.length})"),
+                  SizedBox(
+                    height: 100,
+                    child: Wrap(
+                        direction: Axis.horizontal,
+                        children: times
+                            .map((t) => Container(
+                                padding: EdgeInsets.all(4),
+                                child: Text(compactFormat(t) + ',')))
+                            .toList()),
+                  ),
+                  Row(children: [
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                          padding: const EdgeInsets.all(2),
+                          child: FormBuilderDateTimePicker(
+                            name: 'startTime',
+                            decoration:
+                                const InputDecoration(labelText: 'Start Time'),
+                            initialValue:
+                                DateTime.now().add(Duration(hours: 3)),
+                            onChanged: (time) => {
+                              if (!times.contains(_getTime()))
+                                {
+                                  setState(() {
+                                    canAddTimes = true;
+                                  })
+                                }
+                            },
+                          )),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                          padding: const EdgeInsets.all(2),
+                          child: FormBuilderDateTimePicker(
+                            name: 'endTime',
+                            decoration:
+                                const InputDecoration(labelText: 'End Time'),
+                            initialValue:
+                                DateTime.now().add(Duration(hours: 6)),
+                            onChanged: (time) => {
+                              if (!times.contains(_getTime()))
+                                {
+                                  setState(() {
+                                    canAddTimes = true;
+                                  })
+                                }
+                            },
+                          )),
+                    )
+                  ]),
+                  ElevatedButton(
+                      onPressed: canAddTimes
+                          ? () {
+                              final time = _getTime();
 
-                        if (time != null) {
-                          times.add(time);
-                          setState(() {
-                            times = times;
-                            canAddTimes = false;
-                          });
-                        }
-                      }
-                    : null,
-                child: Text('Add Time'))
-          ]),
-          const Text("Minimum attendees: "),
-          Container(
-              padding: EdgeInsets.only(left: 20, right: 20),
-              child: FormBuilderSlider(
-                  enabled: contacts.length > 1,
-                  name: 'quorum',
-                  initialValue: 1,
-                  min: 1,
-                  max: contacts.length > 1 ? contacts.length.toDouble() : 1,
-                  divisions: contacts.length > 1 ? contacts.length - 1 : 1)),
+                              if (time != null) {
+                                times.add(time);
+                                setState(() {
+                                  times = times;
+                                  canAddTimes = false;
+                                });
+                              }
+                            }
+                          : null,
+                      child: Text('Add Time')),
+                  const Text("Minimum attendees: "),
+                  Container(
+                      padding: EdgeInsets.only(left: 20, right: 20),
+                      child: FormBuilderSlider(
+                          enabled: contacts.length > 1,
+                          name: 'quorum',
+                          initialValue: 1,
+                          min: 1,
+                          max: contacts.length > 1
+                              ? contacts.length.toDouble()
+                              : 1,
+                          divisions:
+                              contacts.length > 1 ? contacts.length - 1 : 1)),
+                ])
+              : Column(),
           Column(children: [
-            Text("invitees: (${contacts.length})"),
+            Text(_timeBasedTask
+                ? "invitees: (${contacts.length})"
+                : "recipients: (${contacts.length})"),
             SizedBox(
               height: 100,
               child: Wrap(
@@ -339,41 +371,42 @@ class _PestaFormState extends State<PestaForm> {
             ),
           ]),
           ElevatedButton(
-              onPressed: contacts.length > 0 && times.length > 0
-                  ? () async {
-                      _formKey.currentState?.save();
-                      final formData = _formKey.currentState?.value;
+              onPressed:
+                  contacts.length > 0 && (times.length > 0 || !_timeBasedTask)
+                      ? () async {
+                          _formKey.currentState?.save();
+                          final formData = _formKey.currentState?.value;
 
-                      final taskType = formData?["task"];
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Starting $taskType task',
+                                  textScaleFactor: 1.5),
+                              duration: Duration(seconds: 3)));
 
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('Starting $taskType task',
-                              textScaleFactor: 1.5),
-                          duration: Duration(seconds: 3)));
+                          final task = Task(
+                              contacts: contacts,
+                              taskType: taskType!,
+                              activity: formData!['activity'],
+                              times: times,
+                              quorum: _timeBasedTask
+                                  ? formData['quorum'].toInt() + 1
+                                  : 1);
 
-                      final task = Task(
-                          contacts: contacts,
-                          taskType: taskType,
-                          activity: formData!['activity'],
-                          times: times,
-                          quorum: formData['quorum'].toInt() + 1);
+                          db ??= await openDatabase(
+                            join(await getDatabasesPath(), databaseName),
+                            version: 2,
+                          );
 
-                      db ??= await openDatabase(
-                        join(await getDatabasesPath(), databaseName),
-                        version: 2,
-                      );
+                          final taskId = await saveTask(task, db!);
 
-                      final taskId = await saveTask(task, db!);
+                          print('just saved task $taskId');
 
-                      print('just saved task $taskId');
-
-                      await Workmanager().registerOneOffTask(
-                        DateTime.now().second.toString(),
-                        task.taskType,
-                        inputData: {'taskId': taskId},
-                      );
-                    }
-                  : null,
+                          await Workmanager().registerOneOffTask(
+                            DateTime.now().second.toString(),
+                            taskToNameMap[task.taskType]!,
+                            inputData: {'taskId': taskId},
+                          );
+                        }
+                      : null,
               child: const Text("Submit"))
         ],
       ),

@@ -55,8 +55,7 @@ String responseOptions(Conversation c) {
 
 String clarificationSMS(Conversation c) {
   return """I couldn't understand your last message. I'm just a simple bot, I need one of these (single letter) responses:
-  ${responseOptions(c)}
-  """;
+${responseOptions(c)}""";
 }
 
 String manualRequestSMS(Conversation c) {
@@ -85,6 +84,9 @@ String successSMS(Conversation c) {
 
 String kickoffSMS(Conversation c, DateTime time) {
   return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity}. I can only understand these single letter responses:
-  ${responseOptions(c)}
-  """;
+${responseOptions(c)}""";
+}
+
+String notificationSMS(Conversation c) {
+  return c.activity;
 }
