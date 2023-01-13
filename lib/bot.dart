@@ -102,6 +102,28 @@ Future<Map<DateTimeRange, List<Conversation>>> checkStatus(
   return quarumMeetingTimes;
 }
 
+Future<bool> sendNotifications(
+    Task task,
+    List<Conversation> conversations,
+    Future<bool> Function(String, String) textFn,
+    Future<dynamic> Function(String, String) notiFn) async {
+  print("about to send ${conversations.length} notifications");
+
+  for (var c in conversations) {
+    try {
+      await textFn(notificationSMS(c), c.number);
+    } catch (e) {
+      notiFn("Error", "Failed to send notification: $e for conversation $c");
+      return false;
+    }
+  }
+
+  notiFn("Success",
+      "${conversations.map((c) => c.otherName).join(", ")} have all been notified.");
+
+  return true;
+}
+
 Future<bool> conversationLoop(
     Task task,
     List<Conversation> conversations,
@@ -196,8 +218,16 @@ void holdConversations() {
         query.querySms(address: address, kinds: kinds);
     print("these are the conversations: $conversations");
 
-    return await conversationLoop(
-        task, conversations, textFn, notiFn, smsQueryFn);
+    switch (task.taskType) {
+      case TaskType.notification:
+        return await sendNotifications(task, conversations, textFn, notiFn);
+      case TaskType.catchUp:
+        return await conversationLoop(
+            task, conversations, textFn, notiFn, smsQueryFn);
+      default:
+        print("unknown task type: ${task.taskType}");
+        return false;
+    }
   });
 }
 

@@ -254,7 +254,7 @@ class _PestaFormState extends State<PestaForm> {
             decoration: const InputDecoration(labelText: 'Task'),
           ),
           FormBuilderTextField(
-            name: "text",
+            name: "activity",
             decoration: const InputDecoration(labelText: "description"),
           ),
           _timeBasedTask
@@ -387,7 +387,9 @@ class _PestaFormState extends State<PestaForm> {
                               taskType: taskType!,
                               activity: formData!['activity'],
                               times: times,
-                              quorum: formData['quorum'].toInt() + 1);
+                              quorum: _timeBasedTask
+                                  ? formData['quorum'].toInt() + 1
+                                  : 1);
 
                           db ??= await openDatabase(
                             join(await getDatabasesPath(), databaseName),

@@ -86,3 +86,7 @@ String kickoffSMS(Conversation c, DateTime time) {
   return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity}. I can only understand these single letter responses:
 ${responseOptions(c)}""";
 }
+
+String notificationSMS(Conversation c) {
+  return c.activity;
+}

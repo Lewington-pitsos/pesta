@@ -20,7 +20,7 @@ void main() {
                   PhoneContact("Paul", PhoneNumber("04 1234 1678", "mobile"));
               final t = Task(
                   contacts: [c],
-                  taskType: "kickoff",
+                  taskType: TaskType.catchUp,
                   activity: "dinner",
                   times: [
                     DateTimeRange(

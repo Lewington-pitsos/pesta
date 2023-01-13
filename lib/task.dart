@@ -51,8 +51,9 @@ class Task {
             PhoneNumber(
                 formatNumber(c.phoneNumber!.number!), c.phoneNumber?.label)))
         .toList();
-
-    this.deadline = (deadline != null) ? deadline : times[0].start;
+    this.deadline = (deadline != null)
+        ? deadline
+        : (times.length > 0 ? times[0].start : DateTime.now());
   }
 
   late final List<PhoneContact> contacts;

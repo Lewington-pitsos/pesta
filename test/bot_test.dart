@@ -60,7 +60,7 @@ void main() {
 
       task = Task(
           contacts: [jacob, wendy],
-          taskType: "invitation",
+          taskType: TaskType.catchUp,
           activity: "dinner",
           times: [
             DateTimeRange(
@@ -72,7 +72,7 @@ void main() {
 
       twoTimeTask = Task(
           contacts: [jacob, wendy],
-          taskType: "invitation",
+          taskType: TaskType.catchUp,
           activity: "dinner",
           times: [
             DateTimeRange(
@@ -87,7 +87,7 @@ void main() {
 
       quorumTask = Task(
           contacts: [jacob, wendy, millie],
-          taskType: "invitation",
+          taskType: TaskType.catchUp,
           activity: "dinner",
           times: [
             DateTimeRange(
