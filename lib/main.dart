@@ -6,7 +6,6 @@ import 'package:contacts_service/contacts_service.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
 import 'dart:async';
 import 'package:flutter/widgets.dart';
-import 'package:background_sms/background_sms.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path/path.dart';
 import 'package:pesta/notification.dart';
@@ -15,6 +14,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:pesta/bot.dart';
 import 'package:pesta/task.dart';
+import 'package:pesta/conversation.dart';
+import 'package:pesta/sms.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -198,6 +199,10 @@ class _PestaFormState extends State<PestaForm> {
       return null;
     }
 
+    if (formData['startTime']!.isAfter(formData['endTime']!)) {
+      return null;
+    }
+
     return DateTimeRange(
         start: formData!['startTime'], end: formData!['endTime']);
   }
@@ -284,11 +289,15 @@ class _PestaFormState extends State<PestaForm> {
             ElevatedButton(
                 onPressed: canAddTimes
                     ? () {
-                        times.add(_getTime()!);
-                        setState(() {
-                          times = times;
-                          canAddTimes = false;
-                        });
+                        final time = _getTime();
+
+                        if (time != null) {
+                          times.add(time);
+                          setState(() {
+                            times = times;
+                            canAddTimes = false;
+                          });
+                        }
                       }
                     : null,
                 child: Text('Add Time'))

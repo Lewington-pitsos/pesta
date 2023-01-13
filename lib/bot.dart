@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
+import 'package:pesta/sms.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:pesta/task.dart';
 import 'package:background_sms/background_sms.dart';
@@ -238,25 +239,8 @@ Future updateConversations(
   }
 }
 
-Future<bool> sendText(String text, String number) async {
-  var allowedErrors = 5;
-  var formattedNumber = number.replaceAll(" ", "");
-  print('about to send sms $text to $formattedNumber');
+Future<bool> sendText(String textMessage, String number) async {
+  print('about to send sms $textMessage to |$number|');
 
-  while (true) {
-    final result = await BackgroundSms.sendMessage(
-        phoneNumber: formattedNumber, message: text.split('\n')[0]);
-    if (result == SmsStatus.sent) {
-      print("sent sms");
-      return true;
-    } else {
-      print("failed to send sms");
-      if (allowedErrors > 0) {
-        allowedErrors--;
-        await Future.delayed(const Duration(seconds: 1));
-      } else {
-        return false;
-      }
-    }
-  }
+  return sendSms(number, textMessage);
 }
