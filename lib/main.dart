@@ -105,7 +105,6 @@ class WelcomeScreen extends StatefulWidget {
 }
 
 class WelcomeScreenState extends State<WelcomeScreen> {
-  static const String nameKey = 'user-name';
   String name = "Your Name";
   late SharedPreferences data;
 

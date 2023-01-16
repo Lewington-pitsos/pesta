@@ -6,7 +6,6 @@ import 'package:pesta/bot.dart';
 import 'package:pesta/task.dart';
 import 'package:pesta/conversation.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
-import 'package:mockito/mockito.dart';
 import 'package:sqflite/sqflite.dart';
 
 Future<bool> textFn(String message, String number) async {
@@ -87,7 +86,7 @@ void main() {
                 end: DateTime.fromMillisecondsSinceEpoch(1671933376654))
           ],
           deadline: DateTime.now().add(Duration(milliseconds: 50)));
-      conversations = task.makeConversations();
+      conversations = task.makeConversations("bob");
 
       twoTimeTask = Task(
           id: 0,
@@ -103,7 +102,7 @@ void main() {
                 end: DateTime(2020, 1, 1, 14, 0)),
           ],
           deadline: DateTime.now().add(Duration(milliseconds: 50)));
-      twoTimeTaskConversations = twoTimeTask.makeConversations();
+      twoTimeTaskConversations = twoTimeTask.makeConversations("Bob");
 
       quorumTask = Task(
           id: 0,
@@ -120,7 +119,7 @@ void main() {
           ],
           deadline: DateTime.now().add(Duration(milliseconds: 50)),
           quorum: 3);
-      quorumTaskConversations = quorumTask.makeConversations();
+      quorumTaskConversations = quorumTask.makeConversations("Paul");
     });
 
     test("when quorum is 2, second time succeeds", () async {

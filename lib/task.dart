@@ -92,9 +92,9 @@ class Task {
     };
   }
 
-  List<Conversation> makeConversations() {
+  List<Conversation> makeConversations(String hostName) {
     return contacts
-        .map((c) => Conversation("Louka", c.fullName!, c.phoneNumber!.number!,
+        .map((c) => Conversation(hostName, c.fullName!, c.phoneNumber!.number!,
             activity, location, times))
         .toList();
   }

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
 import 'package:pesta/sms.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:pesta/task.dart';
 import 'package:background_sms/background_sms.dart';
@@ -18,6 +19,7 @@ import 'package:path/path.dart';
 import 'notification.dart';
 
 const databaseName = "taskdb7.db";
+const String nameKey = 'user-name';
 
 sendResponses(
     Task task,
@@ -240,7 +242,10 @@ void holdConversations() {
       return true;
     }
 
-    final List<Conversation> conversations = task.makeConversations();
+    final localStorage = await SharedPreferences.getInstance();
+
+    final List<Conversation> conversations =
+        task.makeConversations(localStorage.getString(nameKey)!);
     const textFn = sendText;
     notiFn(String title, String body) => Noti.showBigTextNotification(
         title: title, body: body, fln: notificationsPlugin);
