@@ -234,6 +234,12 @@ Future<PermissionStatus> _getAllPermissions() async {
     return PermissionStatus.granted;
   }
   ;
+
+  if (SMSPermission == PermissionStatus.permanentlyDenied ||
+      contactsPermission == PermissionStatus.permanentlyDenied) {
+    return PermissionStatus.permanentlyDenied;
+  }
+
   return PermissionStatus.denied;
 }
 
@@ -251,13 +257,38 @@ class _TaskFormState extends State<TaskForm> {
       if (permissions == PermissionStatus.granted) {
         return PestaForm();
       } else {
-        Permission.sms.request().whenComplete(
-            () => Permission.contacts.request().whenComplete(() async {
-                  permissions = await _getAllPermissions();
+        Permission.sms.request().whenComplete(() =>
+            Permission.contacts.request().whenComplete(() async {
+              permissions = await _getAllPermissions();
+
+              if (mounted) {
+                if (permissions == PermissionStatus.permanentlyDenied ||
+                    permissions == PermissionStatus.denied) {
+                  showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                            title: const Text('Permissions Needed'),
+                            content:
+                                const Text('This app needs SMS and Contacts '
+                                    'permissions to work properly. Please '
+                                    'grant them in the app settings.'),
+                            actions: [
+                              TextButton(
+                                child: const Text("OK"),
+                                onPressed: () {
+                                  openAppSettings();
+                                },
+                              )
+                            ],
+                          ));
+                } else {
+                  // checks if the widget still exists
                   setState(() {
                     permissions = permissions;
                   });
-                }));
+                }
+              }
+            }));
 
         return Center(
             child:
