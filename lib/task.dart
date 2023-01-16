@@ -94,8 +94,8 @@ class Task {
 
   List<Conversation> makeConversations() {
     return contacts
-        .map((c) => Conversation("Louka", c.fullName!.split(" ")[0],
-            c.phoneNumber!.number!, activity, location, times))
+        .map((c) => Conversation("Louka", c.fullName!, c.phoneNumber!.number!,
+            activity, location, times))
         .toList();
   }
 }

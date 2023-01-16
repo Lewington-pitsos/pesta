@@ -36,7 +36,7 @@ String dateOption(DateTimeRange time) {
 }
 
 String failureSMS(Conversation c) {
-  return """Okey dokey I'll let ${c.selfName} know""";
+  return """Okey dokey I'll let ${c.selfFirstName} know""";
 }
 
 String responseOptions(Conversation c) {
@@ -46,7 +46,7 @@ String responseOptions(Conversation c) {
   }
   options += "${alphabet[c.times.length]} - I'm not free\n";
   options +=
-      "${alphabet[c.times.length + 1]} - I want to talk to ${c.selfName}\n";
+      "${alphabet[c.times.length + 1]} - I want to talk to ${c.selfFirstName}\n";
 
   options += "done - i have entered all my times";
 
@@ -59,16 +59,16 @@ ${responseOptions(c)}""";
 }
 
 String manualRequestSMS(Conversation c) {
-  return "That's ok, I don't have feelings to hurt. I'll let ${c.selfName} know";
+  return "That's ok, I don't have feelings to hurt. I'll let ${c.selfFirstName} know";
 }
 
 String groupSuccessSMS(List<Conversation> conversations,
     DateTimeRange chosenTime, Conversation recipientConversation) {
-  var sms = "Great news: ${recipientConversation.selfName}, ";
+  var sms = "Great news: ${recipientConversation.selfFirstName}, ";
 
   sms += conversations
       .where((c) => c != recipientConversation)
-      .map((c) => c.otherName)
+      .map((c) => c.otherFirstName)
       .toList()
       .join((", "));
 
@@ -90,14 +90,12 @@ String formattedNames(List<String> names) {
   return "${names.sublist(0, names.length - 1).join(", ")} and ${names.last}";
 }
 
-List<String> firstNamesOnly(List<String> names) {
-  return names.map((name) => name.split(' ')[0]).toList();
-}
-
 String kickoffSMS(Conversation c, DateTime time, List<String> allContacts) {
-  final otherContacts =
-      firstNamesOnly(allContacts.where((name) => name != c.otherName).toList());
-  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity}, ${formattedNames(otherContacts)} ${otherContacts.length == 1 ? 'was' : 'were'} also invited. What times are you available? I can only understand these (single letter) responses:
+  final otherContacts = allContacts
+      .where((name) => name != c.otherName)
+      .map((n) => firstNameOnly(n))
+      .toList();
+  return """Hi, ${c.otherFirstName} I'm a bot. ${c.selfFirstName} sent me to ask if you want to do ${c.activity}, ${formattedNames(otherContacts)} ${otherContacts.length == 1 ? 'was' : 'were'} also invited. What times are you available? I can only understand these (single letter) responses:
 ${responseOptions(c)}""";
 }
 

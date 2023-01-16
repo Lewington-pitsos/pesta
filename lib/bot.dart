@@ -58,7 +58,7 @@ sendResponses(
         {
           await textFn(manualRequestSMS(c), c.number);
           await notiFn("help...",
-              "${c.otherName} wants to speak to you about to ${task.activity}, see your SMS history with ${c.otherName} for details.");
+              "${c.otherFirstName} wants to speak to you about to ${task.activity}, see your SMS history with ${c.otherFirstName} for details.");
 
           break;
         }
@@ -125,7 +125,7 @@ Future<bool> sendNotifications(
 
   if (task.status.index < TaskStatus.completed.index) {
     notiFn("Success",
-        "${conversations.map((c) => c.otherName).join(", ")} have all been notified.");
+        "${conversations.map((c) => c.otherFirstName).join(", ")} have all been notified.");
 
     await updateTaskStatus(task, db, TaskStatus.completed);
     return true;
@@ -204,7 +204,7 @@ Future<bool> notifySuccess(
   }
 
   await notiFn("Success",
-      "${guests.map((g) => g.otherName).join(", ")} have all agreed to attend ${task.activity}, at ${meetingTime.start}. Everyone has been sent an SMS notification confirming everyone else's attendance. See SMS history with each guest for more details.");
+      "${guests.map((g) => g.otherFirstName).join(", ")} have all agreed to attend ${task.activity}, at ${meetingTime.start}. Everyone has been sent an SMS notification confirming everyone else's attendance. See SMS history with each guest for more details.");
 
   return true;
 }

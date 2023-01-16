@@ -15,6 +15,10 @@ const failingResponseTypes = [
   ResponseType.manualRequest
 ];
 
+String firstNameOnly(String name) {
+  return name.split(' ')[0];
+}
+
 class ConversationStatus {
   ResponseType responseType = ResponseType.none;
   Availability availability = Availability.undetermined;
@@ -70,6 +74,14 @@ class Conversation {
 
   Conversation(this.selfName, this.otherName, this.number, this.activity,
       this.location, this.times);
+
+  String get otherFirstName {
+    return firstNameOnly(otherName);
+  }
+
+  String get selfFirstName {
+    return firstNameOnly(selfName);
+  }
 
   bool contains(SmsMessage msg) {
     return messages.any((m) => m.id == msg.id);
@@ -148,8 +160,9 @@ class Conversation {
     var txt = "";
 
     for (var message in messages) {
-      final name =
-          message.kind == SmsMessageKind.received ? otherName : selfName;
+      final name = message.kind == SmsMessageKind.received
+          ? otherFirstName
+          : selfFirstName;
 
       txt += "$name: ${message.body}\n";
     }
