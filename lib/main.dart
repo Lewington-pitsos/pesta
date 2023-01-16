@@ -160,10 +160,39 @@ class WelcomeScreenState extends State<WelcomeScreen> {
                   await data.setString(nameKey, value),
             )),
         SizedBox(height: 40),
-        ElevatedButton(onPressed: () {}, child: const Text("New Task")),
-        ElevatedButton(onPressed: () {}, child: const Text("View Tasks"))
+        ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NewTaskScreen(),
+                ),
+              );
+            },
+            child: const Text("New Task")),
+        ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const TasksScreen(),
+                ),
+              );
+            },
+            child: const Text("View Tasks"))
       ],
     );
+  }
+}
+
+class NewTaskScreen extends StatelessWidget {
+  const NewTaskScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: const Text('New Task'),
+        ),
+        body: TaskForm());
   }
 }
 
@@ -482,5 +511,18 @@ class _PestaFormState extends State<PestaForm> {
         ],
       ),
     ));
+  }
+}
+
+class TasksScreen extends StatelessWidget {
+  const TasksScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: const Text('Tasks'),
+        ),
+        body: const Text("tasks go here"));
   }
 }
