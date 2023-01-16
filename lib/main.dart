@@ -458,14 +458,20 @@ class _PestaFormState extends State<PestaForm> {
             ),
             ElevatedButton(
               onPressed: () async {
-                final PhoneContact contact =
-                    await FlutterContactPicker.pickPhoneContact();
+                try {
+                  final PhoneContact contact =
+                      await FlutterContactPicker.pickPhoneContact();
 
-                contacts.add(contact);
+                  contacts.add(contact);
 
-                setState(() {
-                  contacts = contacts;
-                });
+                  setState(() {
+                    contacts = contacts;
+                  });
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Failed to add contact'),
+                      duration: Duration(seconds: 2)));
+                }
               },
               child: new Text('Add a contact'),
             ),
