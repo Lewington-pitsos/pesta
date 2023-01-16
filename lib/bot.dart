@@ -103,28 +103,38 @@ Future<Map<DateTimeRange, List<Conversation>>> checkStatus(
 }
 
 Future<bool> sendNotifications(
+    Database db,
     Task task,
     List<Conversation> conversations,
     Future<bool> Function(String, String) textFn,
     Future<dynamic> Function(String, String) notiFn) async {
   print("about to send ${conversations.length} notifications");
 
-  for (var c in conversations) {
-    try {
-      await textFn(notificationSMS(c), c.number);
-    } catch (e) {
-      notiFn("Error", "Failed to send notification: $e for conversation $c");
-      return false;
+  if (task.status.index < TaskStatus.kickedOff.index) {
+    for (var c in conversations) {
+      try {
+        await textFn(notificationSMS(c), c.number);
+      } catch (e) {
+        notiFn("Error", "Failed to send notification: $e for conversation $c");
+        await updateTaskStatus(task, db, TaskStatus.failed);
+        return false;
+      }
     }
+    await updateTaskStatus(task, db, TaskStatus.kickedOff);
   }
 
-  notiFn("Success",
-      "${conversations.map((c) => c.otherName).join(", ")} have all been notified.");
+  if (task.status.index < TaskStatus.completed.index) {
+    notiFn("Success",
+        "${conversations.map((c) => c.otherName).join(", ")} have all been notified.");
 
+    await updateTaskStatus(task, db, TaskStatus.completed);
+    return true;
+  }
   return true;
 }
 
 Future<bool> conversationLoop(
+    Database db,
     Task task,
     List<Conversation> conversations,
     Future<bool> Function(String, String) textFn,
@@ -133,49 +143,70 @@ Future<bool> conversationLoop(
             {String? address, List<SmsQueryKind> kinds})
         smsQueryFn,
     {Duration? interval = const Duration(seconds: 60 * 5)}) async {
-  for (var c in conversations) {
-    await textFn(kickoffSMS(c, DateTime.now()), c.number);
+  if (task.status.index < TaskStatus.kickedOff.index) {
+    for (var c in conversations) {
+      await textFn(kickoffSMS(c, DateTime.now()), c.number);
+    }
+    await updateTaskStatus(task, db, TaskStatus.kickedOff);
   }
 
   List<Conversation> activeConversations = conversations;
   print("kickoff messages sent");
 
-  while (activeConversations.isNotEmpty &&
-      DateTime.now().isBefore(task.deadline)) {
-    print("checking ${activeConversations.length} conversations}");
-    await updateConversations(activeConversations, smsQueryFn);
-    await sendResponses(task, activeConversations, textFn, notiFn);
-    final quarumMeetingTimes = await checkStatus(task, conversations);
-    print("quarum meeting times: $quarumMeetingTimes");
+  if (task.status.index < TaskStatus.postConversation.index) {
+    while (activeConversations.isNotEmpty &&
+        DateTime.now().isBefore(task.deadline)) {
+      print("checking ${activeConversations.length} conversations}");
+      await updateConversations(activeConversations, smsQueryFn);
+      await sendResponses(task, activeConversations, textFn, notiFn);
+      final quarumMeetingTimes = await checkStatus(task, conversations);
+      print("quarum meeting times: $quarumMeetingTimes");
 
-    if (quarumMeetingTimes.isNotEmpty) {
-      final meetingTime = quarumMeetingTimes.keys.first;
-      final guests = quarumMeetingTimes[meetingTime]!;
+      if (quarumMeetingTimes.isNotEmpty) {
+        final success =
+            await notifySuccess(task, textFn, notiFn, quarumMeetingTimes);
+        if (success) {
+          updateTaskStatus(task, db, TaskStatus.completed);
+        }
 
-      for (var c in guests) {
-        await textFn(groupSuccessSMS(guests, meetingTime, c), c.number);
+        return success;
       }
 
-      await notiFn("Success",
-          "${guests.map((g) => g.otherName).join(", ")} have all agreed to attend ${task.activity}, at ${meetingTime.start}. Everyone has been sent an SMS notification confirming everyone else's attendance. See SMS history with each guest for more details.");
+      activeConversations = activeConversations
+          .where((c) => c.availability == Availability.undetermined)
+          .toList();
 
-      return true;
+      print("awaiting ${activeConversations.length} responses}");
+      if (interval != null) {
+        await Future.delayed(interval);
+      }
     }
-
-    activeConversations = activeConversations
-        .where((c) => c.availability == Availability.undetermined)
-        .toList();
-
-    print("awaiting ${activeConversations.length} responses}");
-    if (interval != null) {
-      await Future.delayed(interval);
-    }
+    await updateTaskStatus(task, db, TaskStatus.postConversation);
   }
 
   await notiFn("No takers",
       "Can't schedule task ${task.activity}, we asked everyone, but nobody said yes");
+  await updateTaskStatus(task, db, TaskStatus.failed);
 
   return false;
+}
+
+Future<bool> notifySuccess(
+    Task task,
+    Future<bool> Function(String, String) textFn,
+    Future<dynamic> Function(String, String) notiFn,
+    Map<DateTimeRange, List<Conversation>> quarumMeetingTimes) async {
+  final meetingTime = quarumMeetingTimes.keys.first;
+  final guests = quarumMeetingTimes[meetingTime]!;
+
+  for (var c in guests) {
+    await textFn(groupSuccessSMS(guests, meetingTime, c), c.number);
+  }
+
+  await notiFn("Success",
+      "${guests.map((g) => g.otherName).join(", ")} have all agreed to attend ${task.activity}, at ${meetingTime.start}. Everyone has been sent an SMS notification confirming everyone else's attendance. See SMS history with each guest for more details.");
+
+  return true;
 }
 
 void holdConversations() {
@@ -204,7 +235,10 @@ void holdConversations() {
       return false;
     }
 
-    // if (task.status )
+    if (task.status == TaskStatus.completed) {
+      print('task has already been completed, marking as finished $task');
+      return true;
+    }
 
     final List<Conversation> conversations = task.makeConversations();
     const textFn = sendText;
@@ -219,10 +253,11 @@ void holdConversations() {
 
     switch (task.taskType) {
       case TaskType.notification:
-        return await sendNotifications(task, conversations, textFn, notiFn);
+        return await sendNotifications(
+            database, task, conversations, textFn, notiFn);
       case TaskType.catchUp:
         return await conversationLoop(
-            task, conversations, textFn, notiFn, smsQueryFn);
+            database, task, conversations, textFn, notiFn, smsQueryFn);
       default:
         print("unknown task type: ${task.taskType}");
         return false;

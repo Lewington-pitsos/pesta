@@ -38,6 +38,7 @@ final statusToStringMap = {
 final stringToStatusMap = statusToStringMap.map((k, v) => MapEntry(v, k));
 
 class Task {
+  int id = 0;
   TaskType taskType;
   int quorum;
   String activity;
@@ -47,7 +48,8 @@ class Task {
   TaskStatus status;
 
   Task(
-      {required List<PhoneContact> contacts,
+      {required int id,
+      required List<PhoneContact> contacts,
       required this.taskType,
       required this.activity,
       required this.times,
@@ -92,6 +94,17 @@ class Task {
             c.phoneNumber!.number!, activity, location, times))
         .toList();
   }
+}
+
+Future<bool> updateTaskStatus(Task task, Database db, TaskStatus status) async {
+  task.status = status;
+  return await updateTask(task, db);
+}
+
+Future<bool> updateTask(Task task, Database db) async {
+  int rowsAffected = await db
+      .update('tasks', task.toMap(), where: 'id = ?', whereArgs: [task.id]);
+  return rowsAffected > 0;
 }
 
 Future<int> saveTask(Task task, Database db) async {
@@ -154,6 +167,7 @@ Future<Task?> loadTask(int taskId, Database db) async {
   }
 
   return Task(
+      id: taskId,
       contacts: contacts,
       taskType: nameToTaskMap[taskMaps[0]['taskType']]!,
       activity: taskMaps[0]['activity'],
