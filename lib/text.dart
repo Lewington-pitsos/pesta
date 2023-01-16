@@ -36,17 +36,17 @@ String dateOption(DateTimeRange time) {
 }
 
 String failureSMS(Conversation c) {
-  return """I see... ${c.selfName} might be sad but I it's ok""";
+  return """Okey dokey I'll let ${c.selfName} know""";
 }
 
 String responseOptions(Conversation c) {
   var options = "";
   for (var i = 0; i < c.times.length; i++) {
-    options += "${alphabet[i]} - ${dateOption(c.times[i])} works for me!\n";
+    options += "${alphabet[i]} - ${dateOption(c.times[i])}\n";
   }
-  options += "${alphabet[c.times.length]} - No, I'm busy or something\n";
+  options += "${alphabet[c.times.length]} - I'm not free\n";
   options +=
-      "${alphabet[c.times.length + 1]} - Go away! I want to talk to ${c.selfName}\n";
+      "${alphabet[c.times.length + 1]} - I want to talk to ${c.selfName}\n";
 
   options += "done - i have entered all my times";
 
@@ -54,7 +54,7 @@ String responseOptions(Conversation c) {
 }
 
 String clarificationSMS(Conversation c) {
-  return """I couldn't understand your last message. I'm just a simple bot, I need one of these (single letter) responses:
+  return """I couldn't understand that. I'm just a simple bot. I still need to know what times you can do:
 ${responseOptions(c)}""";
 }
 
@@ -63,17 +63,17 @@ String manualRequestSMS(Conversation c) {
 }
 
 String groupSuccessSMS(List<Conversation> conversations,
-    DateTimeRange chosenTime, Conversation recepiantConversation) {
-  var sms = "Great news: ${recepiantConversation.selfName}, ";
+    DateTimeRange chosenTime, Conversation recipientConversation) {
+  var sms = "Great news: ${recipientConversation.selfName}, ";
 
   sms += conversations
-      .where((c) => c != recepiantConversation)
+      .where((c) => c != recipientConversation)
       .map((c) => c.otherName)
       .toList()
       .join((", "));
 
   sms +=
-      " and you are doing ${recepiantConversation.activity} at ${dateOption(chosenTime)}!\nIf something changes please let everyone else know, but otherwise all the best!";
+      " and you are all doing ${recipientConversation.activity} starting at ${monthFormat(chosenTime.start)}!\nIf something changes please let everyone else know!";
 
   return sms;
 }
@@ -82,8 +82,22 @@ String successSMS(Conversation c) {
   return "Cool!. I'll add that availability to the database.";
 }
 
-String kickoffSMS(Conversation c, DateTime time) {
-  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity}. I can only understand these single letter responses:
+String formattedNames(List<String> names) {
+  if (names.length == 1) {
+    return names.first;
+  }
+
+  return "${names.sublist(0, names.length - 1).join(", ")} and ${names.last}";
+}
+
+List<String> firstNamesOnly(List<String> names) {
+  return names.map((name) => name.split(' ')[0]).toList();
+}
+
+String kickoffSMS(Conversation c, DateTime time, List<String> allContacts) {
+  final otherContacts =
+      firstNamesOnly(allContacts.where((name) => name != c.otherName).toList());
+  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity}, ${formattedNames(otherContacts)} ${otherContacts.length == 1 ? 'was' : 'were'} also invited. What times are you available? I can only understand these (single letter) responses:
 ${responseOptions(c)}""";
 }
 

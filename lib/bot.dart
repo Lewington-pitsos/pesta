@@ -145,7 +145,7 @@ Future<bool> conversationLoop(
     {Duration? interval = const Duration(seconds: 60 * 5)}) async {
   if (task.status.index < TaskStatus.kickedOff.index) {
     for (var c in conversations) {
-      await textFn(kickoffSMS(c, DateTime.now()), c.number);
+      await textFn(kickoffSMS(c, DateTime.now(), task.allContacts()), c.number);
     }
     await updateTaskStatus(task, db, TaskStatus.kickedOff);
   }
