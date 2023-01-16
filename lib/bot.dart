@@ -180,11 +180,6 @@ Future<bool> conversationLoop(
 
 void holdConversations() {
   Workmanager().executeTask((taskName, inputData) async {
-    final notificationsPlugin = FlutterLocalNotificationsPlugin();
-
-    print("about to notify user");
-    await Noti.initialize(notificationsPlugin);
-
     print("beginning task: $taskName");
     print("this is the inputData $inputData");
 
@@ -198,6 +193,8 @@ void holdConversations() {
 
     print("task loaded, $task");
 
+    final notificationsPlugin = FlutterLocalNotificationsPlugin();
+    await Noti.initialize(notificationsPlugin);
     if (task == null) {
       await Noti.showBigTextNotification(
           title: "Task Failed",
@@ -206,6 +203,8 @@ void holdConversations() {
           fln: notificationsPlugin);
       return false;
     }
+
+    // if (task.status )
 
     final List<Conversation> conversations = task.makeConversations();
     const textFn = sendText;

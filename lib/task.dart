@@ -26,6 +26,17 @@ final taskToNameMap = {
 };
 final nameToTaskMap = taskToNameMap.map((k, v) => MapEntry(v, k));
 
+enum TaskStatus { created, kickedOff, postConversation, completed, failed }
+
+final statusToStringMap = {
+  TaskStatus.created: 'Created',
+  TaskStatus.kickedOff: 'Kicked Off',
+  TaskStatus.postConversation: 'Post Conversation',
+  TaskStatus.completed: 'Completed',
+  TaskStatus.failed: 'Failed'
+};
+final stringToStatusMap = statusToStringMap.map((k, v) => MapEntry(v, k));
+
 class Task {
   TaskType taskType;
   int quorum;
@@ -33,7 +44,7 @@ class Task {
   List<DateTimeRange> times;
   String location;
   int neediness;
-  String status;
+  TaskStatus status;
 
   Task(
       {required List<PhoneContact> contacts,
@@ -44,7 +55,7 @@ class Task {
       DateTime? deadline = null,
       this.neediness = 0,
       this.quorum = 2,
-      this.status = 'initialization'}) {
+      this.status = TaskStatus.created}) {
     this.contacts = contacts
         .map((c) => PhoneContact(
             c.fullName,
@@ -71,7 +82,7 @@ class Task {
       'deadline': deadline.millisecondsSinceEpoch,
       'neediness': neediness,
       'quorum': quorum,
-      'status': status
+      'status': statusToStringMap[status],
     };
   }
 
@@ -151,7 +162,7 @@ Future<Task?> loadTask(int taskId, Database db) async {
       deadline: DateTime.fromMillisecondsSinceEpoch(taskMaps[0]['deadline']),
       neediness: taskMaps[0]['neediness'],
       quorum: taskMaps[0]['quorum'],
-      status: taskMaps[0]['status']);
+      status: stringToStatusMap[taskMaps[0]['status']]!);
 }
 
 deleteTask(int taskId, Database db) async {
