@@ -10,28 +10,24 @@ String compactFormat(DateTimeRange time) {
 }
 
 String humanReadable(DateTimeRange time) {
-  var suffix = "th";
-  if (time.start.day == 1) {
-    suffix = "st";
-  } else if (time.start.day == 2) {
-    suffix = "nd";
-  } else if (time.start.day == 3) {
-    suffix = "rd";
-  }
-
+  final suffix = getSuffix(time);
   return "between ${time.start.hour} and ${time.end.hour} on the the ${time.start.day}$suffix";
 }
 
-String dateOption(DateTimeRange time) {
+String getSuffix(DateTimeRange time) {
   var suffix = "th";
-  if (time.start.day == 1) {
+  if ([1, 21, 31].contains(time.start.day)) {
     suffix = "st";
-  } else if (time.start.day == 2) {
+  } else if ([2, 22].contains(time.start.day)) {
     suffix = "nd";
-  } else if (time.start.day == 3) {
+  } else if ([3, 23].contains(time.start.day)) {
     suffix = "rd";
   }
+  return suffix;
+}
 
+String dateOption(DateTimeRange time) {
+  final suffix = getSuffix(time);
   return "${time.start.hour}00-${time.end.hour}00 on the ${time.start.day}$suffix";
 }
 
@@ -91,11 +87,18 @@ String formattedNames(List<String> names) {
 }
 
 String kickoffSMS(Conversation c, DateTime time, List<String> allContacts) {
+  print('all contacts $allContacts|');
+  print('othername ${c.otherName}|');
   final otherContacts = allContacts
       .where((name) => name != c.otherName)
       .map((n) => firstNameOnly(n))
       .toList();
-  return """Hi, ${c.otherFirstName} I'm a bot. ${c.selfFirstName} sent me to ask if you want to do ${c.activity}, ${formattedNames(otherContacts)} ${otherContacts.length == 1 ? 'was' : 'were'} also invited. What times are you available? I can only understand these (single letter) responses:
+
+  final othersInvited = otherContacts.isNotEmpty
+      ? ", ${formattedNames(otherContacts)} ${otherContacts.length == 1 ? 'was' : 'were'} also invited"
+      : "";
+
+  return """Hi, ${c.otherFirstName} I'm a bot. ${c.selfFirstName} sent me to ask if you want to do ${c.activity}$othersInvited. What times are you available? I can only understand these (single letter) responses:
 ${responseOptions(c)}""";
 }
 
