@@ -36,17 +36,17 @@ String dateOption(DateTimeRange time) {
 }
 
 String failureSMS(Conversation c) {
-  return """I see... ${c.selfName} might be sad but I it's ok""";
+  return """Okey dokey I'll let ${c.selfName} know""";
 }
 
 String responseOptions(Conversation c) {
   var options = "";
   for (var i = 0; i < c.times.length; i++) {
-    options += "${alphabet[i]} - ${dateOption(c.times[i])} works for me!\n";
+    options += "${alphabet[i]} - ${dateOption(c.times[i])}\n";
   }
-  options += "${alphabet[c.times.length]} - No, I'm busy or something\n";
+  options += "${alphabet[c.times.length]} - I'm not free\n";
   options +=
-      "${alphabet[c.times.length + 1]} - Go away! I want to talk to ${c.selfName}\n";
+      "${alphabet[c.times.length + 1]} - I want to talk to ${c.selfName}\n";
 
   options += "done - i have entered all my times";
 
@@ -54,7 +54,7 @@ String responseOptions(Conversation c) {
 }
 
 String clarificationSMS(Conversation c) {
-  return """I couldn't understand your last message. I'm just a simple bot, I need one of these (single letter) responses:
+  return """I couldn't understand that. I'm just a simple bot. I still need to know what times you can do:
 ${responseOptions(c)}""";
 }
 
@@ -83,7 +83,7 @@ String successSMS(Conversation c) {
 }
 
 String kickoffSMS(Conversation c, DateTime time) {
-  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity}. I can only understand these single letter responses:
+  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity}. We need to know what times you are available (if any!). I can only understand these single letter responses:
 ${responseOptions(c)}""";
 }
 
