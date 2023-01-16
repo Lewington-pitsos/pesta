@@ -505,6 +505,13 @@ class _PestaFormState extends State<PestaForm> {
                             taskToNameMap[task.taskType]!,
                             inputData: {'taskId': taskId},
                           );
+
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const TasksScreen(),
+                            ),
+                          );
                         }
                       : null,
               child: const Text("Submit"))
