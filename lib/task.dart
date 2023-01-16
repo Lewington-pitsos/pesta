@@ -26,17 +26,30 @@ final taskToNameMap = {
 };
 final nameToTaskMap = taskToNameMap.map((k, v) => MapEntry(v, k));
 
+enum TaskStatus { created, kickedOff, postConversation, completed, failed }
+
+final statusToStringMap = {
+  TaskStatus.created: 'Created',
+  TaskStatus.kickedOff: 'Kicked Off',
+  TaskStatus.postConversation: 'Post Conversation',
+  TaskStatus.completed: 'Completed',
+  TaskStatus.failed: 'Failed'
+};
+final stringToStatusMap = statusToStringMap.map((k, v) => MapEntry(v, k));
+
 class Task {
+  int id = 0;
   TaskType taskType;
   int quorum;
   String activity;
   List<DateTimeRange> times;
   String location;
   int neediness;
-  String status;
+  TaskStatus status;
 
   Task(
-      {required List<PhoneContact> contacts,
+      {required int id,
+      required List<PhoneContact> contacts,
       required this.taskType,
       required this.activity,
       required this.times,
@@ -44,7 +57,7 @@ class Task {
       DateTime? deadline = null,
       this.neediness = 0,
       this.quorum = 2,
-      this.status = 'initialization'}) {
+      this.status = TaskStatus.created}) {
     this.contacts = contacts
         .map((c) => PhoneContact(
             c.fullName,
@@ -71,7 +84,7 @@ class Task {
       'deadline': deadline.millisecondsSinceEpoch,
       'neediness': neediness,
       'quorum': quorum,
-      'status': status
+      'status': statusToStringMap[status],
     };
   }
 
@@ -81,6 +94,17 @@ class Task {
             c.phoneNumber!.number!, activity, location, times))
         .toList();
   }
+}
+
+Future<bool> updateTaskStatus(Task task, Database db, TaskStatus status) async {
+  task.status = status;
+  return await updateTask(task, db);
+}
+
+Future<bool> updateTask(Task task, Database db) async {
+  int rowsAffected = await db
+      .update('tasks', task.toMap(), where: 'id = ?', whereArgs: [task.id]);
+  return rowsAffected > 0;
 }
 
 Future<int> saveTask(Task task, Database db) async {
@@ -143,6 +167,7 @@ Future<Task?> loadTask(int taskId, Database db) async {
   }
 
   return Task(
+      id: taskId,
       contacts: contacts,
       taskType: nameToTaskMap[taskMaps[0]['taskType']]!,
       activity: taskMaps[0]['activity'],
@@ -151,7 +176,7 @@ Future<Task?> loadTask(int taskId, Database db) async {
       deadline: DateTime.fromMillisecondsSinceEpoch(taskMaps[0]['deadline']),
       neediness: taskMaps[0]['neediness'],
       quorum: taskMaps[0]['quorum'],
-      status: taskMaps[0]['status']);
+      status: stringToStatusMap[taskMaps[0]['status']]!);
 }
 
 deleteTask(int taskId, Database db) async {

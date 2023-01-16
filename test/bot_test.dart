@@ -6,6 +6,8 @@ import 'package:pesta/bot.dart';
 import 'package:pesta/task.dart';
 import 'package:pesta/conversation.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
+import 'package:mockito/mockito.dart';
+import 'package:sqflite/sqflite.dart';
 
 Future<bool> textFn(String message, String number) async {
   return Future<bool>(() => true);
@@ -41,6 +43,17 @@ Future<List<SmsMessage>> Function({String? address, List<SmsQueryKind> kinds})
   };
 }
 
+class FakeDatabase extends Fake implements Database {
+  @override
+  Future<int> update(String table, Map<String, Object?> values,
+      {String? where,
+      List<Object?>? whereArgs,
+      ConflictAlgorithm? conflictAlgorithm}) {
+    // TODO: implement update
+    return Future(() => 1);
+  }
+}
+
 void main() {
   late Task task;
   late Task twoTimeTask;
@@ -48,8 +61,13 @@ void main() {
   late List<Conversation> conversations;
   late List<Conversation> twoTimeTaskConversations;
   late List<Conversation> quorumTaskConversations;
+  late FakeDatabase db;
 
   group("Conversation Loop", () {
+    setUpAll(() {
+      db = FakeDatabase();
+    });
+
     setUp(() {
       final jacob =
           PhoneContact("Jacob Sacher", PhoneNumber("04 1234 1678", "mobile"));
@@ -59,6 +77,7 @@ void main() {
           "Millie Barren-Cohen", PhoneNumber("04 8888 8888", "mobile"));
 
       task = Task(
+          id: 0,
           contacts: [jacob, wendy],
           taskType: TaskType.catchUp,
           activity: "dinner",
@@ -71,6 +90,7 @@ void main() {
       conversations = task.makeConversations();
 
       twoTimeTask = Task(
+          id: 0,
           contacts: [jacob, wendy],
           taskType: TaskType.catchUp,
           activity: "dinner",
@@ -86,6 +106,7 @@ void main() {
       twoTimeTaskConversations = twoTimeTask.makeConversations();
 
       quorumTask = Task(
+          id: 0,
           contacts: [jacob, wendy, millie],
           taskType: TaskType.catchUp,
           activity: "dinner",
@@ -104,6 +125,7 @@ void main() {
 
     test("when quorum is 2, second time succeeds", () async {
       final outcome = await conversationLoop(
+          db,
           twoTimeTask,
           twoTimeTaskConversations,
           textFn,
@@ -128,6 +150,7 @@ void main() {
 
     test("when quorum is 3, one affirms is not enough", () async {
       final outcome = await conversationLoop(
+          db,
           quorumTask,
           quorumTaskConversations,
           textFn,
@@ -152,6 +175,7 @@ void main() {
 
     test("when quorum is 3, two affirms at different times fail", () async {
       final outcome = await conversationLoop(
+          db,
           quorumTask,
           quorumTaskConversations,
           textFn,
@@ -191,6 +215,7 @@ void main() {
 
     test("when quorum is 3, two affirms at the same time succeeds", () async {
       final outcome = await conversationLoop(
+          db,
           quorumTask,
           quorumTaskConversations,
           textFn,
@@ -230,13 +255,14 @@ void main() {
 
     test("fails for no replies", () async {
       final outcome = await conversationLoop(
-          task, conversations, textFn, notiFn, makeSmsQueryFn(),
+          db, task, conversations, textFn, notiFn, makeSmsQueryFn(),
           interval: null);
       expect(outcome, false);
     });
 
     test("succeeds for a single positive reply", () async {
       final outcome = await conversationLoop(
+          db,
           task,
           conversations,
           textFn,
@@ -263,6 +289,7 @@ void main() {
 
     test("fails for for a single negative reply", () async {
       final outcome = await conversationLoop(
+          db,
           task,
           conversations,
           textFn,
