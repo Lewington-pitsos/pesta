@@ -328,10 +328,8 @@ class _PestaFormState extends State<PestaForm> {
   }
 
   bool _contactIsNew(PhoneContact contact) {
-    return contacts.indexWhere((c) =>
-            c.fullName == contact.fullName &&
-            c.phoneNumber?.number == contact.phoneNumber?.number &&
-            c.phoneNumber?.label == contact.phoneNumber?.label) ==
+    return contacts.indexWhere(
+            (c) => c.phoneNumber?.number == contact.phoneNumber?.number) ==
         -1;
   }
 
