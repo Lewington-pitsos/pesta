@@ -17,6 +17,7 @@ import 'package:pesta/task.dart';
 import 'package:pesta/conversation.dart';
 import 'package:pesta/sms.dart';
 import 'package:diacritic/diacritic.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,9 +91,108 @@ class PestaOrigin extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Pesta'),
         ),
-        body: TaskForm(),
+        body: WelcomeScreen(),
       ),
     );
+  }
+}
+
+class WelcomeScreen extends StatefulWidget {
+  const WelcomeScreen({super.key});
+
+  @override
+  State<WelcomeScreen> createState() => WelcomeScreenState();
+}
+
+class WelcomeScreenState extends State<WelcomeScreen> {
+  static const String nameKey = 'user-name';
+  String name = "Your Name";
+  late SharedPreferences data;
+
+  Future _loadName() async {
+    data = await SharedPreferences.getInstance();
+
+    final storedName = data.getString(nameKey) ?? '';
+
+    print("collected stored name $storedName");
+
+    if (storedName != '') {
+      setState(() {
+        name = storedName;
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    _loadName();
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SizedBox(height: 30),
+        const Text(
+          "Welcome",
+          style: TextStyle(
+            color: Color.fromARGB(255, 0, 0, 0),
+            fontSize: 20,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Container(
+            padding: const EdgeInsets.only(left: 10, right: 10),
+            child: EditableText(
+              textAlign: TextAlign.center,
+              backgroundCursorColor: const Color.fromARGB(255, 200, 200, 200),
+              controller: TextEditingController(text: name),
+              focusNode: FocusNode(),
+              style: const TextStyle(
+                color: Color.fromARGB(255, 0, 0, 0),
+                fontSize: 20,
+                fontStyle: FontStyle.italic,
+              ),
+              cursorColor: Color.fromARGB(255, 30, 30, 30),
+              onChanged: (value) => data.setString(nameKey, value),
+              onSubmitted: (value) async =>
+                  await data.setString(nameKey, value),
+            )),
+        SizedBox(height: 40),
+        ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NewTaskScreen(),
+                ),
+              );
+            },
+            child: const Text("New Task")),
+        ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const TasksScreen(),
+                ),
+              );
+            },
+            child: const Text("View Tasks"))
+      ],
+    );
+  }
+}
+
+class NewTaskScreen extends StatelessWidget {
+  const NewTaskScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: const Text('New Task'),
+        ),
+        body: TaskForm());
   }
 }
 
@@ -405,11 +505,31 @@ class _PestaFormState extends State<PestaForm> {
                             taskToNameMap[task.taskType]!,
                             inputData: {'taskId': taskId},
                           );
+
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const TasksScreen(),
+                            ),
+                          );
                         }
                       : null,
               child: const Text("Submit"))
         ],
       ),
     ));
+  }
+}
+
+class TasksScreen extends StatelessWidget {
+  const TasksScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: const Text('Tasks'),
+        ),
+        body: const Text("tasks go here"));
   }
 }
