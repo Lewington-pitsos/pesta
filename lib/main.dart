@@ -483,6 +483,7 @@ class _PestaFormState extends State<PestaForm> {
                               duration: Duration(seconds: 3)));
 
                           final task = Task(
+                              id: 0, // placeholder until we save.
                               contacts: contacts,
                               taskType: taskType!,
                               activity: formData!['activity'],
