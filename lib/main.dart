@@ -327,6 +327,12 @@ class _PestaFormState extends State<PestaForm> {
     super.initState();
   }
 
+  bool _contactIsNew(PhoneContact contact) {
+    return contacts.indexWhere(
+            (c) => c.phoneNumber?.number == contact.phoneNumber?.number) ==
+        -1;
+  }
+
   bool get _timeBasedTask {
     return taskType == TaskType.groupSession || taskType == TaskType.catchUp;
   }
@@ -493,18 +499,27 @@ class _PestaFormState extends State<PestaForm> {
                   final PhoneContact contact =
                       await FlutterContactPicker.pickPhoneContact();
 
-                  contacts.add(contact);
-
-                  setState(() {
-                    contacts = contacts;
-                  });
+                  if (_contactIsNew(contact)) {
+                    contacts.add(contact);
+                    setState(() {
+                      contacts = contacts;
+                    });
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Contact already added'),
+                          duration: Duration(seconds: 2)));
+                    }
+                  }
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Failed to add contact'),
-                      duration: Duration(seconds: 2)));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Failed to add contact'),
+                        duration: Duration(seconds: 2)));
+                  }
                 }
               },
-              child: new Text('Add a contact'),
+              child: const Text('Add a contact'),
             ),
           ]),
           ElevatedButton(
