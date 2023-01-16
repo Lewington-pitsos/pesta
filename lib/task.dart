@@ -76,6 +76,10 @@ class Task {
     return 'Task{type: ${taskToNameMap[taskType]}, activity: $activity, contacts: $contacts times: $times, location: $location, deadline: $deadline, neediness: $neediness, status: $status}';
   }
 
+  List<String> allContacts() {
+    return contacts.map((c) => c.fullName!).toList();
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'taskType': taskToNameMap[taskType],

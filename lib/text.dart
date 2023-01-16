@@ -63,17 +63,17 @@ String manualRequestSMS(Conversation c) {
 }
 
 String groupSuccessSMS(List<Conversation> conversations,
-    DateTimeRange chosenTime, Conversation recepiantConversation) {
-  var sms = "Great news: ${recepiantConversation.selfName}, ";
+    DateTimeRange chosenTime, Conversation recipientConversation) {
+  var sms = "Great news: ${recipientConversation.selfName}, ";
 
   sms += conversations
-      .where((c) => c != recepiantConversation)
+      .where((c) => c != recipientConversation)
       .map((c) => c.otherName)
       .toList()
       .join((", "));
 
   sms +=
-      " and you are doing ${recepiantConversation.activity} at ${dateOption(chosenTime)}!\nIf something changes please let everyone else know, but otherwise all the best!";
+      " and you are all doing ${recipientConversation.activity} starting at ${monthFormat(chosenTime.start)}!\nIf something changes please let everyone else know!";
 
   return sms;
 }
@@ -82,8 +82,22 @@ String successSMS(Conversation c) {
   return "Cool!. I'll add that availability to the database.";
 }
 
-String kickoffSMS(Conversation c, DateTime time) {
-  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity}. We need to know what times you are available (if any!). I can only understand these single letter responses:
+String formattedNames(List<String> names) {
+  if (names.length == 1) {
+    return names.first;
+  }
+
+  return "${names.sublist(0, names.length - 1).join(", ")} and ${names.last}";
+}
+
+List<String> firstNamesOnly(List<String> names) {
+  return names.map((name) => name.split(' ')[0]).toList();
+}
+
+String kickoffSMS(Conversation c, DateTime time, List<String> allContacts) {
+  final otherContacts =
+      firstNamesOnly(allContacts.where((name) => name != c.otherName).toList());
+  return """Hi, ${c.otherName} I'm a bot. ${c.selfName} sent me to ask if you want to do ${c.activity}, ${formattedNames(otherContacts)} ${otherContacts.length == 1 ? 'was' : 'were'} also invited. What times are you available? I can only understand these (single letter) responses:
 ${responseOptions(c)}""";
 }
 
