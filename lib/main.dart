@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -71,6 +72,10 @@ CREATE TABLE times (
     print("database already exists");
   }
 
+  final tasks = await loadAllTasks(database);
+
+  print("all tasks $tasks");
+
   runApp(PestaOrigin());
 }
 
@@ -99,8 +104,9 @@ class WelcomeScreen extends StatefulWidget {
 }
 
 class WelcomeScreenState extends State<WelcomeScreen> {
-  String name = "Your Name";
+  String name = "";
   late SharedPreferences data;
+  late TextEditingController txtCtrl;
 
   Future _loadName() async {
     data = await SharedPreferences.getInstance();
@@ -116,14 +122,52 @@ class WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
+  promptName(context) async {
+    if (name == "") {
+      final newName = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+                title: const Text("Your Name"),
+                content: TextField(
+                  autofocus: true,
+                  decoration: InputDecoration(hintText: "Enter name"),
+                  controller: txtCtrl,
+                ),
+                actions: [
+                  TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(txtCtrl.text);
+                      },
+                      child: const Text("OK"))
+                ],
+              ));
+
+      print("new name $newName");
+      await data.setString(nameKey, newName ?? "");
+      setState(() {
+        name = newName ?? "";
+      });
+    }
+  }
+
   @override
   void initState() {
     _loadName();
+
     super.initState();
+    txtCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    txtCtrl.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    Future.delayed(Duration.zero, () => promptName(context));
+
     return Column(
       children: [
         const SizedBox(height: 30),
@@ -352,8 +396,9 @@ class _PestaFormState extends State<PestaForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-        child: FormBuilder(
+    return SingleChildScrollView(
+        child: Center(
+            child: FormBuilder(
       key: _formKey,
       onChanged: () {
         _formKey.currentState?.save();
@@ -549,6 +594,7 @@ class _PestaFormState extends State<PestaForm> {
                           await Workmanager().registerOneOffTask(
                             DateTime.now().second.toString(),
                             taskToNameMap[task.taskType]!,
+                            tag: taskId.toString(),
                             inputData: {'taskId': taskId},
                           );
 
@@ -563,7 +609,7 @@ class _PestaFormState extends State<PestaForm> {
               child: const Text("Submit"))
         ],
       ),
-    ));
+    )));
   }
 }
 
@@ -576,6 +622,129 @@ class TasksScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Tasks'),
         ),
-        body: const Text("tasks go here"));
+        body: Column(children: [const Expanded(child: TaskList())]));
+  }
+}
+
+class TaskList extends StatefulWidget {
+  const TaskList({super.key});
+
+  @override
+  State<TaskList> createState() => _TaskListState();
+}
+
+class _TaskListState extends State<TaskList> {
+  Database? db;
+  late Timer _everySecond;
+
+  _initializeDB() async {
+    if (db != null) return;
+
+    db = await openDatabase(
+      join(await getDatabasesPath(), databaseName),
+      version: 2,
+    );
+  }
+
+  Future<List<Task>> _loadAllTasks() async {
+    await _initializeDB();
+    return loadAllTasks(db!);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _everySecond = Timer.periodic(const Duration(seconds: 3), (Timer t) {
+      if (mounted) {
+        setState(() {});
+      } else {
+        t.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    db?.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: FutureBuilder<List<Task>>(
+          future: _loadAllTasks(),
+          builder: (context, snapshot) {
+            return Container(
+                height: 500,
+                child: ListView.builder(
+                  itemCount: snapshot.data?.length,
+                  itemBuilder: (context, index) {
+                    if (!snapshot.hasData) {
+                      return const CircularProgressIndicator();
+                    }
+
+                    final task = snapshot.data?[index];
+
+                    if (task == null) return const Text("Null Task");
+
+                    var leading;
+                    var stillGoing = false;
+
+                    if (task.status == TaskStatus.completed) {
+                      leading = const Icon(Icons.check_circle);
+                    } else if (task.status == TaskStatus.failed) {
+                      leading = const Icon(Icons.error);
+                    } else if (task.status == TaskStatus.cancelled) {
+                      leading = const Icon(Icons.error);
+                    } else {
+                      leading = const CircularProgressIndicator();
+                      stillGoing = true;
+                    }
+
+                    print("this is the task: $task, ${task.id}");
+
+                    return ListTile(
+                        leading: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [leading],
+                        ),
+                        title: Row(
+                          children: [
+                            Expanded(
+                                flex: 2,
+                                child: Container(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: Text(task.activity))),
+                            Expanded(
+                                flex: 1,
+                                child: stillGoing
+                                    ? ElevatedButton(
+                                        onPressed: () async {
+                                          await Workmanager()
+                                              .cancelByTag(task.id.toString());
+                                          task.status = TaskStatus.cancelled;
+                                          await updateTask(task, db!);
+                                          final newTask =
+                                              await loadTask(task.id, db!);
+                                          setState(() {});
+                                        },
+                                        child: const Text("Cancel"))
+                                    : ElevatedButton(
+                                        onPressed: () async {
+                                          await deleteTask(task.id, db!);
+                                          setState(() {});
+                                        },
+                                        child: const Text("Delete")))
+                          ],
+                        ),
+                        subtitle:
+                            Text("${taskToNameMap[task.taskType]!} task"));
+                  },
+                ));
+          }),
+    );
   }
 }

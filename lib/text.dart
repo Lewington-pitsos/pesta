@@ -74,6 +74,17 @@ String groupSuccessSMS(List<Conversation> conversations,
   return sms;
 }
 
+String eventOccurringSMS(List<Conversation> confirmedGuests,
+    DateTimeRange chosenTime, Conversation recipientConversation) {
+  var sms = "Ok, so it's going ahead, ";
+  sms += confirmedGuests.map((c) => c.otherFirstName).toList().join((", "));
+
+  sms +=
+      " and ${recipientConversation.selfFirstName} have all confirmed they are doing ${recipientConversation.activity} starting at ${monthFormat(chosenTime.start)}! If you want to come too just let ${recipientConversation.selfFirstName} know.";
+
+  return sms;
+}
+
 String successSMS(Conversation c) {
   return "Cool!. I'll add that availability to the database.";
 }

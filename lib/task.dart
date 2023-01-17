@@ -26,19 +26,27 @@ final taskToNameMap = {
 };
 final nameToTaskMap = taskToNameMap.map((k, v) => MapEntry(v, k));
 
-enum TaskStatus { created, kickedOff, postConversation, completed, failed }
+enum TaskStatus {
+  created,
+  kickedOff,
+  postConversation,
+  completed,
+  failed,
+  cancelled
+}
 
 final statusToStringMap = {
   TaskStatus.created: 'Created',
   TaskStatus.kickedOff: 'Kicked Off',
   TaskStatus.postConversation: 'Post Conversation',
   TaskStatus.completed: 'Completed',
-  TaskStatus.failed: 'Failed'
+  TaskStatus.failed: 'Failed',
+  TaskStatus.cancelled: 'Cancelled',
 };
 final stringToStatusMap = statusToStringMap.map((k, v) => MapEntry(v, k));
 
 class Task {
-  int id = 0;
+  int id;
   TaskType taskType;
   int quorum;
   String activity;
@@ -48,7 +56,7 @@ class Task {
   TaskStatus status;
 
   Task(
-      {required int id,
+      {required this.id,
       required List<PhoneContact> contacts,
       required this.taskType,
       required this.activity,
@@ -106,8 +114,11 @@ Future<bool> updateTaskStatus(Task task, Database db, TaskStatus status) async {
 }
 
 Future<bool> updateTask(Task task, Database db) async {
+  print("Updating task: $task, id: ${task.id}}");
   int rowsAffected = await db
       .update('tasks', task.toMap(), where: 'id = ?', whereArgs: [task.id]);
+
+  print("Rows affected: $rowsAffected");
   return rowsAffected > 0;
 }
 
@@ -146,6 +157,10 @@ Future<Task?> loadTask(int taskId, Database db) async {
       ],
       where: 'id = ?',
       whereArgs: [taskId]);
+
+  if (taskMaps.isEmpty) {
+    return null;
+  }
   List<Map<String, dynamic>> contactMaps = await db.query('contacts',
       columns: ['fullName', 'phoneNumber'],
       where: 'taskId = ?',
@@ -153,10 +168,78 @@ Future<Task?> loadTask(int taskId, Database db) async {
   List<Map<String, dynamic>> timeMaps = await db.query('times',
       columns: ['start', 'end'], where: 'taskId = ?', whereArgs: [taskId]);
 
-  if (taskMaps.isEmpty) {
-    return null;
+  List<PhoneContact> contacts = [];
+  for (Map<String, dynamic> contactMap in contactMaps) {
+    contacts.add(PhoneContact(contactMap['fullName'],
+        PhoneNumber(contactMap['phoneNumber'], contactMap['phoneNumberName'])));
   }
 
+  List<DateTimeRange> times = [];
+  for (Map<String, dynamic> timeMap in timeMaps) {
+    times.add(DateTimeRange(
+        start: DateTime.fromMillisecondsSinceEpoch(timeMap['start']),
+        end: DateTime.fromMillisecondsSinceEpoch(timeMap['end'])));
+  }
+
+  return makeSingleTask(taskMaps, contactMaps, timeMaps, taskId);
+}
+
+Future<List<Task>> loadAllTasks(Database db) async {
+  List<Map<String, dynamic>> taskMaps = await db.query('tasks', columns: [
+    'id',
+    'taskType',
+    'activity',
+    'location',
+    'deadline',
+    'neediness',
+    'status',
+    'quorum',
+  ]);
+
+  print("TASK MAPS: $taskMaps");
+
+  if (taskMaps.isEmpty) {
+    return [];
+  }
+  List<Map<String, dynamic>> contactMaps = await db
+      .query('contacts', columns: ['taskId', 'fullName', 'phoneNumber']);
+  List<Map<String, dynamic>> timeMaps =
+      await db.query('times', columns: ['taskId', 'start', 'end']);
+
+  Map<int, List<Map<String, dynamic>>> contacts = {};
+  for (Map<String, dynamic> contactMap in contactMaps) {
+    if (!contacts.containsKey(contactMap['taskId'])) {
+      contacts[contactMap['taskId']] = [];
+    }
+
+    contacts[contactMap['taskId']]!.add(contactMap);
+  }
+
+  Map<int, List<Map<String, dynamic>>> times = {};
+  for (Map<String, dynamic> timeMap in timeMaps) {
+    if (!times.containsKey(timeMap['taskId'])) {
+      times[timeMap['taskId']] = [];
+    }
+
+    times[timeMap['taskId']]!.add(timeMap);
+  }
+
+  List<Task> allTasks = [];
+
+  for (Map<String, dynamic> taskMap in taskMaps) {
+    final taskContacts = contacts[taskMap['id']] ?? [];
+    final taskTimes = times[taskMap['id']] ?? [];
+    allTasks
+        .add(makeSingleTask([taskMap], taskContacts, taskTimes, taskMap['id']));
+  }
+  return allTasks;
+}
+
+Task makeSingleTask(
+    List<Map<String, dynamic>> taskMaps,
+    List<Map<String, dynamic>> contactMaps,
+    List<Map<String, dynamic>> timeMaps,
+    int taskId) {
   List<PhoneContact> contacts = [];
   for (Map<String, dynamic> contactMap in contactMaps) {
     contacts.add(PhoneContact(contactMap['fullName'],

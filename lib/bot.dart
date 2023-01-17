@@ -165,8 +165,8 @@ Future<bool> conversationLoop(
       print("quarum meeting times: $quarumMeetingTimes");
 
       if (quarumMeetingTimes.isNotEmpty) {
-        final success =
-            await notifySuccess(task, textFn, notiFn, quarumMeetingTimes);
+        final success = await notifySuccess(
+            task, textFn, notiFn, quarumMeetingTimes, activeConversations);
         if (success) {
           updateTaskStatus(task, db, TaskStatus.completed);
         }
@@ -197,7 +197,8 @@ Future<bool> notifySuccess(
     Task task,
     Future<bool> Function(String, String) textFn,
     Future<dynamic> Function(String, String) notiFn,
-    Map<DateTimeRange, List<Conversation>> quarumMeetingTimes) async {
+    Map<DateTimeRange, List<Conversation>> quarumMeetingTimes,
+    List<Conversation> activeConversations) async {
   final meetingTime = quarumMeetingTimes.keys.first;
   final guests = quarumMeetingTimes[meetingTime]!;
 
@@ -205,8 +206,14 @@ Future<bool> notifySuccess(
     await textFn(groupSuccessSMS(guests, meetingTime, c), c.number);
   }
 
+  for (final c in activeConversations) {
+    if (!guests.contains(c)) {
+      await textFn(eventOccurringSMS(guests, meetingTime, c), c.number);
+    }
+  }
+
   await notiFn("Success",
-      "${guests.map((g) => g.otherFirstName).join(", ")} have all agreed to attend ${task.activity}, at ${meetingTime.start}. Everyone has been sent an SMS notification confirming everyone else's attendance. See SMS history with each guest for more details.");
+      "${guests.map((g) => g.otherFirstName).join(", ")} have all agreed to attend ${task.activity}, at ${meetingTime.start}. Everyone (including unconfirmed guests) has been sent an SMS notification confirming everyone else's attendance. See SMS history with each guest for more details.");
 
   return true;
 }
