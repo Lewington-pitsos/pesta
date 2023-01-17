@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -626,63 +627,70 @@ class _TaskListState extends State<TaskList> {
       body: FutureBuilder<List<Task>>(
           future: _loadAllTasks(),
           builder: (context, snapshot) {
-            return ListView.builder(
-              itemCount: snapshot.data?.length,
-              itemBuilder: (context, index) {
-                if (!snapshot.hasData) {
-                  return const CircularProgressIndicator();
-                }
+            return Container(
+                height: 500,
+                child: ListView.builder(
+                  itemCount: snapshot.data?.length,
+                  itemBuilder: (context, index) {
+                    if (!snapshot.hasData) {
+                      return const CircularProgressIndicator();
+                    }
 
-                final task = snapshot.data?[index];
+                    final task = snapshot.data?[index];
 
-                if (task == null) return const Text("Null Task");
+                    if (task == null) return const Text("Null Task");
 
-                var leading;
-                var stillGoing = false;
+                    var leading;
+                    var stillGoing = false;
 
-                if (task.status == TaskStatus.completed) {
-                  leading = const Icon(Icons.check_circle);
-                } else if (task.status == TaskStatus.failed) {
-                  leading = const Icon(Icons.error);
-                } else if (task.status == TaskStatus.cancelled) {
-                  leading = const Icon(Icons.error);
-                } else {
-                  leading = const CircularProgressIndicator();
-                  stillGoing = true;
-                }
+                    if (task.status == TaskStatus.completed) {
+                      leading = const Icon(Icons.check_circle);
+                    } else if (task.status == TaskStatus.failed) {
+                      leading = const Icon(Icons.error);
+                    } else if (task.status == TaskStatus.cancelled) {
+                      leading = const Icon(Icons.error);
+                    } else {
+                      leading = const CircularProgressIndicator();
+                      stillGoing = true;
+                    }
 
-                print("this is the task: $task, ${task.id}");
+                    print("this is the task: $task, ${task.id}");
 
-                return ListTile(
-                    leading: leading,
-                    title: Row(
-                      children: [
-                        Expanded(flex: 2, child: Text(task.activity)),
-                        Expanded(
-                            flex: 1,
-                            child: stillGoing
-                                ? ElevatedButton(
-                                    onPressed: () async {
-                                      await Workmanager()
-                                          .cancelByTag(task.id.toString());
-                                      task.status = TaskStatus.cancelled;
-                                      await updateTask(task, db!);
-                                      final newTask =
-                                          await loadTask(task.id, db!);
-                                      setState(() {});
-                                    },
-                                    child: const Text("Cancel"))
-                                : ElevatedButton(
-                                    onPressed: () async {
-                                      await deleteTask(task.id, db!);
-                                      setState(() {});
-                                    },
-                                    child: const Text("Delete")))
-                      ],
-                    ),
-                    subtitle: Text("${taskToNameMap[task.taskType]!} task"));
-              },
-            );
+                    return ListTile(
+                        leading: leading,
+                        title: Row(
+                          children: [
+                            Expanded(
+                                flex: 2,
+                                child: Container(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: Text(task.activity))),
+                            Expanded(
+                                flex: 1,
+                                child: stillGoing
+                                    ? ElevatedButton(
+                                        onPressed: () async {
+                                          await Workmanager()
+                                              .cancelByTag(task.id.toString());
+                                          task.status = TaskStatus.cancelled;
+                                          await updateTask(task, db!);
+                                          final newTask =
+                                              await loadTask(task.id, db!);
+                                          setState(() {});
+                                        },
+                                        child: const Text("Cancel"))
+                                    : ElevatedButton(
+                                        onPressed: () async {
+                                          await deleteTask(task.id, db!);
+                                          setState(() {});
+                                        },
+                                        child: const Text("Delete")))
+                          ],
+                        ),
+                        subtitle:
+                            Text("${taskToNameMap[task.taskType]!} task"));
+                  },
+                ));
           }),
     );
   }
