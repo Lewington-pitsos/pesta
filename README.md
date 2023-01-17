@@ -1,8 +1,9 @@
 # Pesta
 
+![logo](assets/logo.png)
+
 An app which uses automated SMS messages to organize events with your contacts. We're currently in the process of building the app.
 
-![WIP](assets/whiteboard-1.jpg)
 
 ## Testing
 
