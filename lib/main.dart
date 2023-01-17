@@ -104,8 +104,9 @@ class WelcomeScreen extends StatefulWidget {
 }
 
 class WelcomeScreenState extends State<WelcomeScreen> {
-  String name = "Your Name";
+  String name = "";
   late SharedPreferences data;
+  late TextEditingController txtCtrl;
 
   Future _loadName() async {
     data = await SharedPreferences.getInstance();
@@ -121,14 +122,52 @@ class WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
+  promptName(context) async {
+    if (name == "") {
+      final newName = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+                title: const Text("Your Name"),
+                content: TextField(
+                  autofocus: true,
+                  decoration: InputDecoration(hintText: "Enter name"),
+                  controller: txtCtrl,
+                ),
+                actions: [
+                  TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(txtCtrl.text);
+                      },
+                      child: const Text("OK"))
+                ],
+              ));
+
+      print("new name $newName");
+      await data.setString(nameKey, newName ?? "");
+      setState(() {
+        name = newName ?? "";
+      });
+    }
+  }
+
   @override
   void initState() {
     _loadName();
+
     super.initState();
+    txtCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    txtCtrl.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    Future.delayed(Duration.zero, () => promptName(context));
+
     return Column(
       children: [
         const SizedBox(height: 30),
@@ -357,8 +396,9 @@ class _PestaFormState extends State<PestaForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-        child: FormBuilder(
+    return SingleChildScrollView(
+        child: Center(
+            child: FormBuilder(
       key: _formKey,
       onChanged: () {
         _formKey.currentState?.save();
@@ -569,7 +609,7 @@ class _PestaFormState extends State<PestaForm> {
               child: const Text("Submit"))
         ],
       ),
-    ));
+    )));
   }
 }
 
@@ -595,6 +635,7 @@ class TaskList extends StatefulWidget {
 
 class _TaskListState extends State<TaskList> {
   Database? db;
+  late Timer _everySecond;
 
   _initializeDB() async {
     if (db != null) return;
@@ -613,6 +654,14 @@ class _TaskListState extends State<TaskList> {
   @override
   void initState() {
     super.initState();
+
+    _everySecond = Timer.periodic(const Duration(seconds: 3), (Timer t) {
+      if (mounted) {
+        setState(() {});
+      } else {
+        t.cancel();
+      }
+    });
   }
 
   @override
@@ -657,7 +706,11 @@ class _TaskListState extends State<TaskList> {
                     print("this is the task: $task, ${task.id}");
 
                     return ListTile(
-                        leading: leading,
+                        leading: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [leading],
+                        ),
                         title: Row(
                           children: [
                             Expanded(
