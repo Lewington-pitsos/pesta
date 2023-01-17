@@ -71,6 +71,10 @@ CREATE TABLE times (
     print("database already exists");
   }
 
+  final tasks = await loadAllTasks(database);
+
+  print("all tasks $tasks");
+
   runApp(PestaOrigin());
 }
 
@@ -549,6 +553,7 @@ class _PestaFormState extends State<PestaForm> {
                           await Workmanager().registerOneOffTask(
                             DateTime.now().second.toString(),
                             taskToNameMap[task.taskType]!,
+                            tag: taskId.toString(),
                             inputData: {'taskId': taskId},
                           );
 
@@ -576,6 +581,109 @@ class TasksScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Tasks'),
         ),
-        body: const Text("tasks go here"));
+        body: Column(children: [const Expanded(child: TaskList())]));
+  }
+}
+
+class TaskList extends StatefulWidget {
+  const TaskList({super.key});
+
+  @override
+  State<TaskList> createState() => _TaskListState();
+}
+
+class _TaskListState extends State<TaskList> {
+  Database? db;
+
+  _initializeDB() async {
+    if (db != null) return;
+
+    db = await openDatabase(
+      join(await getDatabasesPath(), databaseName),
+      version: 2,
+    );
+  }
+
+  Future<List<Task>> _loadAllTasks() async {
+    await _initializeDB();
+    return loadAllTasks(db!);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    db?.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: FutureBuilder<List<Task>>(
+          future: _loadAllTasks(),
+          builder: (context, snapshot) {
+            return ListView.builder(
+              itemCount: snapshot.data?.length,
+              itemBuilder: (context, index) {
+                if (!snapshot.hasData) {
+                  return const CircularProgressIndicator();
+                }
+
+                final task = snapshot.data?[index];
+
+                if (task == null) return const Text("Null Task");
+
+                var leading;
+                var stillGoing = false;
+
+                if (task.status == TaskStatus.completed) {
+                  leading = const Icon(Icons.check_circle);
+                } else if (task.status == TaskStatus.failed) {
+                  leading = const Icon(Icons.error);
+                } else if (task.status == TaskStatus.cancelled) {
+                  leading = const Icon(Icons.error);
+                } else {
+                  leading = const CircularProgressIndicator();
+                  stillGoing = true;
+                }
+
+                print("this is the task: $task, ${task.id}");
+
+                return ListTile(
+                    leading: leading,
+                    title: Row(
+                      children: [
+                        Expanded(flex: 2, child: Text(task.activity)),
+                        Expanded(
+                            flex: 1,
+                            child: stillGoing
+                                ? ElevatedButton(
+                                    onPressed: () async {
+                                      await Workmanager()
+                                          .cancelByTag(task.id.toString());
+                                      task.status = TaskStatus.cancelled;
+                                      await updateTask(task, db!);
+                                      final newTask =
+                                          await loadTask(task.id, db!);
+                                      setState(() {});
+                                    },
+                                    child: const Text("Cancel"))
+                                : ElevatedButton(
+                                    onPressed: () async {
+                                      await deleteTask(task.id, db!);
+                                      setState(() {});
+                                    },
+                                    child: const Text("Delete")))
+                      ],
+                    ),
+                    subtitle: Text("${taskToNameMap[task.taskType]!} task"));
+              },
+            );
+          }),
+    );
   }
 }
