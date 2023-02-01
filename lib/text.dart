@@ -109,7 +109,7 @@ String kickoffSMS(Conversation c, DateTime time, List<String> allContacts) {
       ? ", ${formattedNames(otherContacts)} ${otherContacts.length == 1 ? 'was' : 'were'} also invited"
       : "";
 
-  return """Hi, ${c.otherFirstName} I'm a bot. ${c.selfFirstName} sent me to ask if you want to do ${c.activity}$othersInvited. What times are you available? I can only understand these (single letter) responses:
+  return """Hi, ${c.otherFirstName} I'm a bot. ${c.selfFirstName} sent me to ask if you'd like to do ${c.activity}$othersInvited. What times are you available? I can only understand these (single letter) responses:
 ${responseOptions(c)}""";
 }
 

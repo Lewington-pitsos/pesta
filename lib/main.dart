@@ -263,23 +263,6 @@ Future<PermissionStatus> _getSMSPermission() async {
   }
 }
 
-Future<PermissionStatus> _getAllPermissions() async {
-  final PermissionStatus contactsPermission = await _getContactsPermission();
-  final PermissionStatus SMSPermission = await _getSMSPermission();
-  if (contactsPermission == PermissionStatus.granted &&
-      SMSPermission == PermissionStatus.granted) {
-    return PermissionStatus.granted;
-  }
-  ;
-
-  if (SMSPermission == PermissionStatus.permanentlyDenied ||
-      contactsPermission == PermissionStatus.permanentlyDenied) {
-    return PermissionStatus.permanentlyDenied;
-  }
-
-  return PermissionStatus.denied;
-}
-
 class _TaskFormState extends State<TaskForm> {
   PermissionStatus permissions = PermissionStatus.denied;
 
@@ -294,38 +277,37 @@ class _TaskFormState extends State<TaskForm> {
       if (permissions == PermissionStatus.granted) {
         return PestaForm();
       } else {
-        Permission.sms.request().whenComplete(() =>
-            Permission.contacts.request().whenComplete(() async {
-              permissions = await _getAllPermissions();
+        Permission.sms.request().whenComplete(
+            () => Permission.contacts.request().whenComplete(() async {
+                  permissions = await _getContactsPermission();
 
-              if (mounted) {
-                if (permissions == PermissionStatus.permanentlyDenied ||
-                    permissions == PermissionStatus.denied) {
-                  showDialog(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                            title: const Text('Permissions Needed'),
-                            content:
-                                const Text('This app needs SMS and Contacts '
+                  if (mounted) {
+                    if (permissions == PermissionStatus.permanentlyDenied ||
+                        permissions == PermissionStatus.denied) {
+                      showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                                title: const Text('Permissions Needed'),
+                                content: const Text('This app needs Contacts '
                                     'permissions to work properly. Please '
                                     'grant them in the app settings.'),
-                            actions: [
-                              TextButton(
-                                child: const Text("OK"),
-                                onPressed: () {
-                                  openAppSettings();
-                                },
-                              )
-                            ],
-                          ));
-                } else {
-                  // checks if the widget still exists
-                  setState(() {
-                    permissions = permissions;
-                  });
-                }
-              }
-            }));
+                                actions: [
+                                  TextButton(
+                                    child: const Text("OK"),
+                                    onPressed: () {
+                                      openAppSettings();
+                                    },
+                                  )
+                                ],
+                              ));
+                    } else {
+                      // checks if the widget still exists
+                      setState(() {
+                        permissions = permissions;
+                      });
+                    }
+                  }
+                }));
 
         return Center(
             child:
@@ -358,6 +340,7 @@ class _PestaFormState extends State<PestaForm> {
   Database? db;
   List<DateTimeRange> times = [];
   bool canAddTimes = true;
+  PermissionStatus smsPermissions = PermissionStatus.denied;
 
   @override
   void initState() {
@@ -564,46 +547,69 @@ class _PestaFormState extends State<PestaForm> {
               onPressed:
                   contacts.length > 0 && (times.length > 0 || !_timeBasedTask)
                       ? () async {
-                          _formKey.currentState?.save();
-                          final formData = _formKey.currentState?.value;
+                          smsPermissions = await _getSMSPermission();
 
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text('Starting $taskType task',
-                                  textScaleFactor: 1.5),
-                              duration: Duration(seconds: 3)));
+                          if (smsPermissions ==
+                                  PermissionStatus.permanentlyDenied ||
+                              smsPermissions == PermissionStatus.denied) {
+                            showDialog(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                      title: const Text('Permissions Needed'),
+                                      content: const Text('This app needs SMS '
+                                          'permissions to work properly. Please '
+                                          'grant them in the app settings.'),
+                                      actions: [
+                                        TextButton(
+                                          child: const Text("OK"),
+                                          onPressed: () {
+                                            openAppSettings();
+                                          },
+                                        )
+                                      ],
+                                    ));
+                          } else {
+                            _formKey.currentState?.save();
+                            final formData = _formKey.currentState?.value;
 
-                          final task = Task(
-                              id: 0, // placeholder until we save.
-                              contacts: contacts,
-                              taskType: taskType!,
-                              activity: formData!['activity'],
-                              times: times,
-                              quorum: _timeBasedTask
-                                  ? formData['quorum'].toInt() + 1
-                                  : 1);
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text('Starting $taskType task',
+                                    textScaleFactor: 1.5),
+                                duration: Duration(seconds: 3)));
 
-                          db ??= await openDatabase(
-                            join(await getDatabasesPath(), databaseName),
-                            version: 2,
-                          );
+                            final task = Task(
+                                id: 0, // placeholder until we save.
+                                contacts: contacts,
+                                taskType: taskType!,
+                                activity: formData!['activity'],
+                                times: times,
+                                quorum: _timeBasedTask
+                                    ? formData['quorum'].toInt() + 1
+                                    : 1);
 
-                          final taskId = await saveTask(task, db!);
+                            db ??= await openDatabase(
+                              join(await getDatabasesPath(), databaseName),
+                              version: 2,
+                            );
 
-                          print('just saved task $taskId');
+                            final taskId = await saveTask(task, db!);
 
-                          await Workmanager().registerOneOffTask(
-                            DateTime.now().second.toString(),
-                            taskToNameMap[task.taskType]!,
-                            tag: taskId.toString(),
-                            inputData: {'taskId': taskId},
-                          );
+                            print('just saved task $taskId');
 
-                          Navigator.pop(context);
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const TasksScreen(),
-                            ),
-                          );
+                            await Workmanager().registerOneOffTask(
+                              DateTime.now().second.toString(),
+                              taskToNameMap[task.taskType]!,
+                              tag: taskId.toString(),
+                              inputData: {'taskId': taskId},
+                            );
+
+                            Navigator.pop(context);
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const TasksScreen(),
+                              ),
+                            );
+                          }
                         }
                       : null,
               child: const Text("Submit"))
