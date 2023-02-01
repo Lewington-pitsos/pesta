@@ -22,7 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Workmanager().initialize(holdConversations, isInDebugMode: true);
+  await Workmanager().initialize(holdConversations, isInDebugMode: false);
 
   final database = await openDatabase(
     join(await getDatabasesPath(), databaseName),
@@ -85,6 +85,7 @@ class PestaOrigin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Pesta',
       home: Scaffold(
         appBar: AppBar(
